@@ -1,0 +1,39 @@
+table_jeu: |
+  CREATE TABLE "jeu" (
+  	"nom"	TEXT,
+  	"description"	TEXT,
+  	"favori"	NUMERIC NOT NULL DEFAULT 0 CHECK(favori IN (0, 1)),
+  	"touche_def_1"	TEXT UNIQUE,
+  	"touche_def_2"	TEXT UNIQUE,
+  	"touche_def_3"	TEXT UNIQUE,
+  	"touche_def_4"	TEXT UNIQUE,
+  	PRIMARY KEY("nom")
+  );
+
+table_touche: |
+  CREATE TABLE "touche" (
+	"id_touche"	TEXT,
+	"code_touche"	NUMERIC NOT NULL,
+	"representation"	TEXT NOT NULL,
+	PRIMARY KEY("id_touche")
+  );
+  
+table_session: |
+  CREATE TABLE "session" (
+	"id_session"	INTEGER,
+	"info"	TEXT,
+	"id_jeu"	TEXT NOT NULL,
+	PRIMARY KEY("id_session"),
+	FOREIGN KEY("id_jeu") REFERENCES "jeu"("nom")
+  );
+
+table_frappe: |
+  CREATE TABLE "frappe" (
+  	"id_frappe"	INTEGER,
+  	"horodatage"	INTEGER NOT NULL,
+  	"id_session"	INTEGER NOT NULL,
+  	"id_touche"	INTEGER NOT NULL,
+  	PRIMARY KEY("id_frappe" AUTOINCREMENT),
+  	FOREIGN KEY("id_session") REFERENCES "session"("id_session"),
+  	FOREIGN KEY("id_touche") REFERENCES "touche"("id_touche")
+  );

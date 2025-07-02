@@ -1,0 +1,4 @@
+suppression_jeu: DELETE FROM jeu
+suppression_touche: DELETE FROM touche
+suppression_session: DELETE FROM session
+suppression_frappe: DELETE FROM frappe

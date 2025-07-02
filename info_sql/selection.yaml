@@ -1,0 +1,4 @@
+selection_jeu: SELECT * FROM jeu
+selection_touche: SELECT * FROM touche
+selection_session: SELECT * FROM session
+selection_frappe: SELECT * FROM frappe
