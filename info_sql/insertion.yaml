@@ -1,6 +1,14 @@
 insertions_jeu_descr: |
   INSERT INTO jeu (nom, description, favori, touche_def_1, touche_def_2,touche_def_3,touche_def_4)
   VALUES (?,?,?,?,?,?,?)
+
 insertions_jeu_sans_descr: |
   INSERT INTO jeu (nom, favori, touche_def_1, touche_def_2,touche_def_3,touche_def_4)
   VALUES (?,?,?,?,?,?)
+
+insertion_sessions_vierge: |
+  INSERT INTO session (id_session, info, id_jeu)
+  VALUES (?,?,?)
+
+insertion_touche: |
+  INSERT INTO touche (id_touche

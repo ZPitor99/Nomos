@@ -5,8 +5,9 @@ import threading
 import queue
 import logging
 import os
+import sys
 from logging.handlers import RotatingFileHandler
-
+from filelock import FileLock, Timeout
 
 
 class AppKrono:
@@ -28,11 +29,11 @@ class AppKrono:
 
         # Handler fichier avec rotation
         file_handler = RotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        file_handler.setFormatter(logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s'))
 
         # Handler console
         stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        stream_handler.setFormatter(logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s'))
 
         # Ajout des handlers au logger
         self.logger.addHandler(file_handler)
@@ -74,6 +75,7 @@ class AppKrono:
             print((identifiant_session, timestamp, touche_name, touche_code))
 
     def start(self) -> None:
+        self.logger.info("Nomos initialisation.")
         self.logger.info("Start de AppKrono.")
         ecoute_thread = threading.Thread(target=self.faire_commit_periodique)
         ecoute_thread.daemon = True
@@ -89,7 +91,15 @@ class AppKrono:
         self.enregistre_dans_bd()
         self.logger.info("Fin.")
 
-
-# if __name__ == "__main__":
-#     logger = AppKrono()
-#     logger.start()
+#Empécher plussieurs lancements
+# lock_path = os.path.join(os.path.expanduser("~"), ".appkrono.lock")
+# lock = FileLock(lock_path)
+#
+# try:
+#     with lock:
+#         if __name__ == "__main__":
+#             logger = AppKrono()
+#             logger.start()
+# except Timeout:
+#     print("L'application est déjà en cours d'exécution.")
+#     sys.exit(1)

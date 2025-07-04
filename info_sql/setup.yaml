@@ -1,0 +1,2 @@
+pragma_secure: PRAGMA secure_delete = ON
+nettoyage: VACUUM

@@ -1,0 +1,6 @@
+__main__.GestionSqlite - 2025-07-04 15:41:17,455 - INFO - GestionSqlite initialisée avec logger par défaut
+__main__.GestionSqlite - 2025-07-04 15:41:17,458 - INFO - Connection faite et ouverte avec secure applique
+__main__.GestionSqlite - 2025-07-04 15:41:17,479 - INFO - Début de la fermeture de la connexion BD
+__main__.GestionSqlite - 2025-07-04 15:41:17,479 - INFO - Début du nettoyage de la base de données
+__main__.GestionSqlite - 2025-07-04 15:41:17,486 - INFO - Nettoyage terminé avec succès
+__main__.GestionSqlite - 2025-07-04 15:41:17,486 - INFO - Fermeture BD terminée avec succès
