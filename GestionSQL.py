@@ -22,7 +22,7 @@ class GestionSqlite:
             self.logger.info("GestionSqlite initialisée avec logger partagé.")
         else:
             # Logger par défaut si aucun n'est fourni
-            self.logger = logging.getLogger(f"{__name__}.GestionSqlite")
+            self.logger = logging.getLogger("GestionSqlite")
             self.logger.setLevel(logging.INFO)
             if not self.logger.handlers:
                 file_handler = logging.FileHandler(log_file, encoding='utf-8')
@@ -54,41 +54,51 @@ class GestionSqlite:
         self.logger.info("Connection faite et ouverte avec secure applique.")
 
     def __str__(self) -> str:
-        tables = self.cursor.execute("SELECT name FROM sqlite_master ORDER BY name")
+        tables = self.cursor.execute(self.setup["gestionSQL_string"])
         tables = tables.fetchall()
         return str(tables)
 
     def __del__(self) -> None:
         self.fin()
+        return
 
     def est_ferme(self) -> bool:
         return not self.ouvert
 
     def ajout_jeu(self, nom: str, description: str, favori: bool, touche1: str, touche2: str, touche3: str,
                   touche4: str) -> None:
-        if description == "" or description is None:
-            self.cursor.execute(
-                self.commande_insert["insertions_jeu_sans_descr"],
-                (nom, favori, touche1, touche2, touche3, touche4))
-        else:
-            self.cursor.execute(
-                self.commande_insert["insertions_jeu_descr"],
-                (nom, description, favori, touche1, touche2, touche3, touche4))
-        self.connection.commit()
+        try:
+            if description == "" or description is None:
+                self.cursor.execute(
+                    self.commande_insert["insertions_jeu_sans_descr"],
+                    (nom, favori, touche1, touche2, touche3, touche4))
+            else:
+                self.cursor.execute(
+                    self.commande_insert["insertions_jeu_descr"],
+                    (nom, description, favori, touche1, touche2, touche3, touche4))
+            self.connection.commit()
+        except Exception as e:
+            self.logger.error("Erreur" + str(e) + "pour un nouveau jeu")
         return
 
     def select_all(self, nom: str) -> None:
-        self.cursor.execute(
-            self.commande_select[f"selection_{nom}"]
-        )
-        self.connection.commit()
-        print(self.cursor.fetchall())
+        try:
+            self.cursor.execute(
+                self.commande_select[f"selection_{nom}"]
+            )
+            self.connection.commit()
+        except Exception as e:
+            self.logger.error("Erreur" + str(e) + "pour la selection dans la table" + nom)
+        return
 
     def delete_all(self, nom: str) -> None:
-        self.cursor.execute(
-            self.commande_delete[f"suppression_{nom}"]
-        )
-        self.connection.commit()
+        try:
+            self.cursor.execute(
+                self.commande_delete[f"suppression_{nom}"]
+            )
+            self.connection.commit()
+        except Exception as e:
+            self.logger.error("Erreur" + str(e) + "pour la suppression")
         return
 
     def nettoyage(self):
@@ -124,7 +134,6 @@ class GestionSqlite:
                 self.logger.debug("Connexion fermée.")
 
             self.logger.info("Fermeture BD terminée avec succès.")
-
         except Exception as e:
             self.logger.error(f"Erreur lors du connexion : {e}")
         finally:

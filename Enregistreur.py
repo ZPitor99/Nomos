@@ -1,4 +1,3 @@
-import pyodbc
 import keyboard
 from collections import defaultdict
 import pyodbc

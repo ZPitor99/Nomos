@@ -1,2 +1,3 @@
 pragma_secure: PRAGMA secure_delete = ON
 nettoyage: VACUUM
+gestionSQL_string: SELECT name FROM sqlite_master ORDER BY name

@@ -4,3 +4,9 @@ __main__.GestionSqlite - 2025-07-04 15:41:17,479 - INFO - Début de la fermeture
 __main__.GestionSqlite - 2025-07-04 15:41:17,479 - INFO - Début du nettoyage de la base de données
 __main__.GestionSqlite - 2025-07-04 15:41:17,486 - INFO - Nettoyage terminé avec succès
 __main__.GestionSqlite - 2025-07-04 15:41:17,486 - INFO - Fermeture BD terminée avec succès
+GestionSqlite - 2025-07-05 00:11:21,175 - INFO - GestionSqlite initialisée avec logger par défaut.
+GestionSqlite - 2025-07-05 00:11:21,180 - INFO - Connection faite et ouverte avec secure applique.
+GestionSqlite - 2025-07-05 00:11:21,195 - INFO - Début de la fermeture de la connexion BD.
+GestionSqlite - 2025-07-05 00:11:21,195 - INFO - Début du nettoyage de la base de données.
+GestionSqlite - 2025-07-05 00:11:21,200 - INFO - Nettoyage terminé avec succès.
+GestionSqlite - 2025-07-05 00:11:21,200 - INFO - Fermeture BD terminée avec succès.
