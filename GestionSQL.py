@@ -6,8 +6,21 @@ import os
 
 
 class GestionSqlite:
+    """
+    Class GestionSqlite permet de gérer les transactions avec la base de données en paramètre (path de la base) lors de sa création.
+    Dois être de schéma spécifié dans `__init__`.\n
+    Etablie une connection sécurisée, travail de logging et fermeture propre avec nettoyage.\n
+    Utilise les instructions sql présent dans le répertoire `info_sql` qui sont en adéquation avec le schéma de la base.
+    """
 
     def __init__(self, nom_db: str, logger: Optional[logging.Logger] = None) -> None:
+        """
+        Créé une instance de la classe GestionSqlite. Utilise la base de donnée en paramètre, mais doit être de schéma
+        tel que spécifier dans bd1.pdf de type sqlite3.db.\n
+        Args:
+            nom_db (str): Nom de la base de donnée à laquelle se connecter
+            logger (logging.Logger): Non du logger si logger partagé est souhaité
+        """
         self.nom_db = nom_db
         self.connection = sqlite3.connect(nom_db)
         self.cursor = self.connection.cursor()
@@ -121,16 +134,17 @@ class GestionSqlite:
             nom (str) : Le nom de la table
 
         Returns:
-            Optional[list] : Une liste si la table n’est pas vide
+            Optional[list] : Une liste si la table n’est pas vide, None sinon
         """
         try:
             self.cursor.execute(
                 self.commande_select[f"selection_{nom}"]
             )
             res = self.cursor.fetchall()
+            return res
         except Exception as e:
             self.logger.error("Erreur" + str(e) + "pour la selection dans la table" + nom)
-        return
+        return None
 
     def delete_all(self, nom: str) -> None:
         """
