@@ -45,6 +45,7 @@ class GestionSqlite:
 
         with open("info_sql/setup.yaml", "r") as file:
             self.setup = yaml.safe_load(file)
+        self.logger.info("Chargement des scriptes SQL fait.")
 
         # Etablissement de la connection
         self.cursor.execute(self.setup["pragma_secure"])
@@ -52,21 +53,52 @@ class GestionSqlite:
         assert self.cursor.execute("PRAGMA secure_delete").fetchone()[0] == 1, "La suppression n'est pas sécurisé"
         self.ouvert = True
         self.logger.info("Connection faite et ouverte avec secure applique.")
+        return
 
     def __str__(self) -> str:
+        """
+        Donne la liste des elements de la base de données : tables, index…
+        Returns:
+            str: La représentation en chaine de character de la liste des éléments de la bd
+        """
         tables = self.cursor.execute(self.setup["gestionSQL_string"])
         tables = tables.fetchall()
         return str(tables)
 
     def __del__(self) -> None:
+        """
+        Met fin à la connection avec la bd à la suppression de le l'instance de la classe
+        Returns:
+            None
+        """
         self.fin()
         return
 
     def est_ferme(self) -> bool:
+        """
+        Renvoie thrue si la connection est fermé, false sinon
+        Returns:
+            bool: La négation du champs self.ouvert
+        """
         return not self.ouvert
 
     def ajout_jeu(self, nom: str, description: str, favori: bool, touche1: str, touche2: str, touche3: str,
                   touche4: str) -> None:
+        """
+        Ajoute le jeu dans la table jeu.\n
+        Notifications dans le logger.
+        Args:
+            nom (str): Nom du jeu
+            description (str): Description du jeu
+            favori (bool): si le jeu est favori ou non favori
+            touche1 (str): Nom du touche1
+            touche2 (str): Nom du touche2
+            touche3 (str): Nom du touche3
+            touche4 (str): Nom du touche4
+
+        Returns:
+            None
+        """
         try:
             if description == "" or description is None:
                 self.cursor.execute(
@@ -81,17 +113,35 @@ class GestionSqlite:
             self.logger.error("Erreur" + str(e) + "pour un nouveau jeu")
         return
 
-    def select_all(self, nom: str) -> None:
+    def select_all(self, nom: str) -> Optional[list]:
+        """
+        Selection de tous les éléments de la table donnée en paramètre et la renvoie.\n
+        Notifications dans le logger.
+        Args:
+            nom (str) : Le nom de la table
+
+        Returns:
+            Optional[list] : Une liste si la table n’est pas vide
+        """
         try:
             self.cursor.execute(
                 self.commande_select[f"selection_{nom}"]
             )
-            self.connection.commit()
+            res = self.cursor.fetchall()
         except Exception as e:
             self.logger.error("Erreur" + str(e) + "pour la selection dans la table" + nom)
         return
 
     def delete_all(self, nom: str) -> None:
+        """
+        Vide la table donnée en paramètre.\n
+        Notifications dans le logger.
+        Args:
+            nom (str): Le nom de la table
+
+        Returns:
+            None
+        """
         try:
             self.cursor.execute(
                 self.commande_delete[f"suppression_{nom}"]
@@ -101,7 +151,14 @@ class GestionSqlite:
             self.logger.error("Erreur" + str(e) + "pour la suppression")
         return
 
-    def nettoyage(self):
+    def nettoyage(self) -> None:
+        """
+        Fait le nettoyage de la base de donnée.
+        À faire avant la fermeture.\n
+        Notifications dans le logger.
+        Returns:
+            None
+        """
         if self.est_ferme():
             return
 
@@ -118,6 +175,12 @@ class GestionSqlite:
         return
 
     def fin(self):
+        """
+        Applique le nettoyage de la bd et met fin a la connection.\n
+        Notifications dans le logger.
+        Returns:
+            None
+        """
         if self.est_ferme():
             self.logger.debug("Tentative de fermeture d'une connexion déjà fermée.")
             return
@@ -139,6 +202,53 @@ class GestionSqlite:
         finally:
             self.ouvert = False
         return
+
+    def insertion_touche(self, liste_touche: list[list]) -> None:
+        """
+        Prends une liste de touche dont les éléments sont [str, int, int, int] et insert les éléments dans la table
+        touche, gère l’identifiant des touches.\n
+        Notifications dans le logger.
+        Args:
+            liste_touche (list): Une liste de touche(`list`) que l’on insère dans la table touche
+
+        Returns:
+            None
+        """
+        id_t = 0
+        try:
+            self.logger.info("Insertion dans la table touche du dictionnaire des touches.")
+            for info_touche in liste_touche:
+                self.cursor.execute(
+                    self.commande_insert["insertion_touche"],
+                    (id_t, info_touche[0], info_touche[1], info_touche[2], info_touche[3])
+                )
+                id_t += 1
+            self.connection.commit()
+            self.logger.info("Insertion faite avec success.")
+        except Exception as e:
+            self.logger.error(f"Erreur lors de l'initialisation de touche : {e}")
+        return
+
+    def insertion_frappe(self, temps: int, session: int, touche: int) -> None:
+        """
+        Insert les paramètre comme un tuple dans la table frappe.
+        Notifications dans le logger.\n
+        Args:
+            temps (int): l'horodatage de la frappe au format UNIX
+            session (int): identifiant du session
+            touche (int): identifiant de la touche
+
+        Returns:
+            None
+        """
+        try:
+            self.cursor.execute(
+                self.commande_insert["insertion_frappe"],
+                (temps, session, touche)
+            )
+            self.connection.commit()
+        except Exception as e:
+            self.logger.error(f"Erreur lors d'une enregistrement de frappe : {e}")
 
 
 gestSQL = GestionSqlite("mesures.db")

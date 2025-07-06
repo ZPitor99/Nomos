@@ -11,4 +11,9 @@ insertion_sessions_vierge: |
   VALUES (?,?,?)
 
 insertion_touche: |
-  INSERT INTO touche (id_touche
+  INSERT INTO touche (id_touche, representation, x, y, code)
+  VALUES (?,?,?,?,?)
+
+insertion_frappe: |
+  INSERT INTO frappe (horodatage, id_session, id_touche)
+  VALUES (?,?,?)

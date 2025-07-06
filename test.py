@@ -14,7 +14,7 @@ class AppKrono:
 
     def __init__(self) -> None:
         self.identifiant_session = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        self.en_enregistrement = True
+        self.en_enregistrement = False
         self.appui_touche_queue = queue.Queue()
 
         # Configuration du répertoire des logs
@@ -40,6 +40,11 @@ class AppKrono:
         self.logger.addHandler(stream_handler)
 
         self.logger.info("Logger initialisé.")
+        return
+
+    def initiatisation_bd(self):
+
+        return
 
     def ecoute(self, event) -> None:
         """
@@ -82,6 +87,7 @@ class AppKrono:
         ecoute_thread.start()
 
         self.logger.info("Debut enregistrement de touche.")
+        self.en_enregistrement = True
         keyboard.hook(self.ecoute)
         keyboard.wait('esc')
         self.logger.info("Fin enregistrement de touche.")
@@ -91,7 +97,7 @@ class AppKrono:
         self.enregistre_dans_bd()
         self.logger.info("Fin.")
 
-#Empécher plussieurs lancements
+# Empecher plusieurs lancements
 # lock_path = os.path.join(os.path.expanduser("~"), ".appkrono.lock")
 # lock = FileLock(lock_path)
 #
