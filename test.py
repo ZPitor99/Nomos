@@ -39,7 +39,7 @@ class AppKrono:
         self.logger.addHandler(file_handler)
         self.logger.addHandler(stream_handler)
 
-        self.logger.info("Logger initialisé.")
+        self.logger.info("=== === === Logger initialisé. === === ===")
         return
 
     def initiatisation_bd(self):

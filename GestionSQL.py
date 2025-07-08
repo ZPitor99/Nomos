@@ -1,8 +1,11 @@
 import sqlite3
+from logging.handlers import RotatingFileHandler
 from typing import Optional
 import yaml
 import logging
 import os
+from datetime import datetime
+import time
 
 
 class GestionSqlite:
@@ -38,10 +41,10 @@ class GestionSqlite:
             self.logger = logging.getLogger("GestionSqlite")
             self.logger.setLevel(logging.INFO)
             if not self.logger.handlers:
-                file_handler = logging.FileHandler(log_file, encoding='utf-8')
+                file_handler = RotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
                 file_handler.setFormatter(logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s'))
                 self.logger.addHandler(file_handler)
-            self.logger.info("GestionSqlite initialisée avec logger par défaut.")
+            self.logger.info("=== === === GestionSqlite initialisée avec logger par défaut. === === ===")
 
         # Chargement des scriptes
         with open("info_sql/insertion.yaml", "r") as file:
@@ -122,6 +125,7 @@ class GestionSqlite:
                     self.commande_insert["insertions_jeu_descr"],
                     (nom, description, favori, touche1, touche2, touche3, touche4))
             self.connection.commit()
+            self.logger.info("Insertion d'un nouveau jeu faite.")
         except Exception as e:
             self.logger.error("Erreur" + str(e) + "pour un nouveau jeu")
         return
@@ -161,6 +165,7 @@ class GestionSqlite:
                 self.commande_delete[f"suppression_{nom}"]
             )
             self.connection.commit()
+            self.logger.info(f"Suppression de tout tuples de {nom}")
         except Exception as e:
             self.logger.error("Erreur" + str(e) + "pour la suppression")
         return
@@ -230,7 +235,6 @@ class GestionSqlite:
         """
         id_t = 0
         try:
-            self.logger.info("Insertion dans la table touche du dictionnaire des touches.")
             for info_touche in liste_touche:
                 self.cursor.execute(
                     self.commande_insert["insertion_touche"],
@@ -238,7 +242,7 @@ class GestionSqlite:
                 )
                 id_t += 1
             self.connection.commit()
-            self.logger.info("Insertion faite avec success.")
+            self.logger.info("Insertion dans la table touche du liste des touches.")
         except Exception as e:
             self.logger.error(f"Erreur lors de l'initialisation de touche : {e}")
         return
@@ -267,7 +271,24 @@ class GestionSqlite:
 
 gestSQL = GestionSqlite("mesures.db")
 print(gestSQL)
+
+print("=== Test jeu")
 gestSQL.ajout_jeu("lol", "", True, "a", "z", "e", "r")
-gestSQL.select_all("jeu")
+print(gestSQL.select_all("jeu"))
 gestSQL.delete_all("jeu")
-gestSQL.select_all("jeu")
+print(gestSQL.select_all("jeu"))
+
+print("=== Test touche")
+gestSQL.insertion_touche([["a",1,1,10],["b",2,2,20],["c",3,3,30]])
+print(gestSQL.select_all("touche"))
+
+print(gestSQL.select_all("touche"))
+
+print("=== Test frappe")
+gestSQL.insertion_frappe(int(datetime.now().timestamp()), int(datetime.now().timestamp()), 10)
+gestSQL.insertion_frappe(int(datetime.now().timestamp()), int(datetime.now().timestamp()), 20)
+print(gestSQL.select_all("frappe"))
+gestSQL.delete_all("frappe")
+print(gestSQL.select_all("frappe"))
+gestSQL.delete_all("touche")
+print(gestSQL.select_all("touche"))
