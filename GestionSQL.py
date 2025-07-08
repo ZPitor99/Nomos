@@ -5,13 +5,12 @@ import yaml
 import logging
 import os
 from datetime import datetime
-import time
 
 
 class GestionSqlite:
     """
     Class GestionSqlite permet de gérer les transactions avec la base de données en paramètre (path de la base) lors de sa création.
-    Dois être de schéma spécifié dans `__init__`.\n
+    Dois être de schéma spécifié dans `__init__’.\n
     Etablie une connection sécurisée, travail de logging et fermeture propre avec nettoyage.\n
     Utilise les instructions sql présent dans le répertoire `info_sql` qui sont en adéquation avec le schéma de la base.
     """
@@ -35,7 +34,7 @@ class GestionSqlite:
 
         if logger:
             self.logger = logger
-            self.logger.info("GestionSqlite initialisée avec logger partagé.")
+            self.logger.info("=== GestionSqlite initialisée avec logger partagé. ===")
         else:
             # Logger par défaut si aucun n'est fourni
             self.logger = logging.getLogger("GestionSqlite")

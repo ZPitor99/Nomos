@@ -9,13 +9,16 @@ import sys
 from logging.handlers import RotatingFileHandler
 from filelock import FileLock, Timeout
 
+import GestionSQL as gsql
+
 
 class AppKrono:
 
     def __init__(self) -> None:
-        self.identifiant_session = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        self.identifiant_session = int(datetime.now().timestamp())
         self.en_enregistrement = False
         self.appui_touche_queue = queue.Queue()
+        self.bd = None
 
         # Configuration du répertoire des logs
         log_dir = "logs"
@@ -43,15 +46,15 @@ class AppKrono:
         return
 
     def initiatisation_bd(self):
-
+        self.bd = gsql.GestionSqlite("mesures.db", self.logger)
         return
 
     def ecoute(self, event) -> None:
         """
-        Methode lancé à l'appui d'une touche. Ajoute les informations de la touche appuyée à appui_touche_queue.\n
+        Methode lancé à l’appui d’une touche. Ajoute les informations de la touche appuyée à appui_touche_queue.\n
         Enregistre :\n
         - id de session
-        - l'horodatage de la touche -> nullification de second et microsecond
+        - l’horodatage de la touche → nullification de second et microsecond
         - le nom de la touche
         - le code de la touche
         Args:
@@ -61,9 +64,9 @@ class AppKrono:
             None
         """
         if event.event_type == "down":
-            timestamp = datetime.now()
-            touche_name = event.name.lower()
-            touche_code = event.scan_code
+            timestamp = int(datetime.now().timestamp())
+            touche_name = event.name.lower() #representation
+            touche_code = event.scan_code #code
 
             self.appui_touche_queue.put((self.identifiant_session, timestamp, touche_name, touche_code))
 
@@ -98,14 +101,14 @@ class AppKrono:
         self.logger.info("Fin.")
 
 # Empecher plusieurs lancements
-# lock_path = os.path.join(os.path.expanduser("~"), ".appkrono.lock")
-# lock = FileLock(lock_path)
-#
-# try:
-#     with lock:
-#         if __name__ == "__main__":
-#             logger = AppKrono()
-#             logger.start()
-# except Timeout:
-#     print("L'application est déjà en cours d'exécution.")
-#     sys.exit(1)
+lock_path = os.path.join(os.path.expanduser("~"), ".appkrono.lock")
+lock = FileLock(lock_path)
+
+try:
+    with lock:
+        if __name__ == "__main__":
+            logger = AppKrono()
+            logger.start()
+except Timeout:
+    print("L'application est déjà en cours d'exécution.")
+    sys.exit(1)
