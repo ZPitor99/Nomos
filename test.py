@@ -43,19 +43,23 @@ class AppKrono:
         self.logger.addHandler(stream_handler)
 
         self.logger.info("=== === === Logger initialisé. === === ===")
+
+        try:
+            self.bd = gsql.GestionSqlite("mesures.db", self.logger)
+        except Exception as e:
+            self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
         return
 
-    def initiatisation_bd(self):
-        self.bd = gsql.GestionSqlite("mesures.db", self.logger)
-        return
+    # def initialisation_touches(self) -> None:
+    #     pass
+    #     return
 
     def ecoute(self, event) -> None:
         """
         Methode lancé à l’appui d’une touche. Ajoute les informations de la touche appuyée à appui_touche_queue.\n
         Enregistre :\n
+        - l’horodatage de la touche au format UNIX
         - id de session
-        - l’horodatage de la touche → nullification de second et microsecond
-        - le nom de la touche
         - le code de la touche
         Args:
             event: Évènement de déclenchement de pressions sur touche
@@ -64,11 +68,9 @@ class AppKrono:
             None
         """
         if event.event_type == "down":
-            timestamp = int(datetime.now().timestamp())
-            touche_name = event.name.lower() #representation
+            timestamp = datetime.now().timestamp()
             touche_code = event.scan_code #code
-
-            self.appui_touche_queue.put((self.identifiant_session, timestamp, touche_name, touche_code))
+            self.appui_touche_queue.put((timestamp, self.identifiant_session, touche_code))
 
         return
 
@@ -78,9 +80,19 @@ class AppKrono:
             self.enregistre_dans_bd()
 
     def enregistre_dans_bd(self) -> None:
+        if self.appui_touche_queue.empty():
+            return
+        batch_data = []
         while not self.appui_touche_queue.empty():
-            identifiant_session, timestamp, touche_name, touche_code = self.appui_touche_queue.get()
-            print((identifiant_session, timestamp, touche_name, touche_code))
+            try:
+                data = self.appui_touche_queue.get_nowait()
+                batch_data.append(data)
+            except Exception as e:
+                self.logger.error(f"Erreur dans l'enregistrement dans la bd : {e}")
+
+        if batch_data:
+            self.bd.insertion_frappe(batch_data)
+        return
 
     def start(self) -> None:
         self.logger.info("Nomos initialisation.")
@@ -107,8 +119,8 @@ lock = FileLock(lock_path)
 try:
     with lock:
         if __name__ == "__main__":
-            logger = AppKrono()
-            logger.start()
+            en_cour = AppKrono()
+            en_cour.start()
 except Timeout:
     print("L'application est déjà en cours d'exécution.")
     sys.exit(1)

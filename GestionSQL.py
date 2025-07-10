@@ -221,51 +221,56 @@ class GestionSqlite:
             self.ouvert = False
         return
 
-    def insertion_touche(self, liste_touche: list[list]) -> None:
+    def insertion_touche(self, liste_touches: list[tuple[int, str, int, int]]) -> None:
         """
         Prends une liste de touche dont les éléments sont [str, int, int, int] et insert les éléments dans la table
         touche, gère l’identifiant des touches.\n
         Notifications dans le logger.
         Args:
-            liste_touche (list): Une liste de touche(`list`) que l’on insère dans la table touche
+            liste_touches (list): Une liste de touche(`tuple`) que l’on insère dans la table touche
 
         Returns:
             None
         """
-        id_t = 0
         try:
-            for info_touche in liste_touche:
-                self.cursor.execute(
-                    self.commande_insert["insertion_touche"],
-                    (id_t, info_touche[0], info_touche[1], info_touche[2], info_touche[3])
-                )
-                id_t += 1
+            self.cursor.executemany(
+                self.commande_insert["insertion_touche"],
+                liste_touches,
+            )
             self.connection.commit()
             self.logger.info("Insertion dans la table touche du liste des touches.")
         except Exception as e:
             self.logger.error(f"Erreur lors de l'initialisation de touche : {e}")
         return
 
-    def insertion_frappe(self, temps: int, session: int, touche: int) -> None:
+    def insertion_frappe(self, frappes:list[tuple[int, int, int]]) -> None:
         """
         Insert les paramètre comme un tuple dans la table frappe.
         Notifications dans le logger.\n
         Args:
-            temps (int): l'horodatage de la frappe au format UNIX
-            session (int): identifiant du session
-            touche (int): identifiant de la touche
+            frappes (list): List de tuple contenant les frappes à insérer
 
         Returns:
             None
         """
         try:
-            self.cursor.execute(
+            self.cursor.executemany(
                 self.commande_insert["insertion_frappe"],
-                (temps, session, touche)
+                frappes,
             )
             self.connection.commit()
         except Exception as e:
             self.logger.error(f"Erreur lors d'une enregistrement de frappe : {e}")
+
+    def test(self):
+        try:
+            self.logger.info("Test de la connexion BD.")
+            self.cursor.execute(
+                "SELECT * FROM frappe, touche WHERE frappe.code = touche.code ORDER BY id_frappe")
+            res = self.cursor.fetchall()
+            return res
+        except Exception as e:
+            self.logger.info(f"{e}")
 
 
 gestSQL = GestionSqlite("mesures.db")
@@ -278,14 +283,15 @@ gestSQL.delete_all("jeu")
 print(gestSQL.select_all("jeu"))
 
 print("=== Test touche")
-gestSQL.insertion_touche([["a",1,1,10],["b",2,2,20],["c",3,3,30]])
-print(gestSQL.select_all("touche"))
-
+gestSQL.insertion_touche([(10,"a",1,1),(20,"b",2,2),(30,"c",3,3)])
 print(gestSQL.select_all("touche"))
 
 print("=== Test frappe")
-gestSQL.insertion_frappe(int(datetime.now().timestamp()), int(datetime.now().timestamp()), 10)
-gestSQL.insertion_frappe(int(datetime.now().timestamp()), int(datetime.now().timestamp()), 20)
+gestSQL.insertion_frappe([(int(datetime.now().timestamp()),25,10),(int(datetime.now().timestamp()),25,10),(int(datetime.now().timestamp()),25,30)])
+gestSQL.insertion_frappe([(int(datetime.now().timestamp()),26,50),(int(datetime.now().timestamp()),26,10),(int(datetime.now().timestamp()),26,10)])
+
+print(gestSQL.test())
+
 print(gestSQL.select_all("frappe"))
 gestSQL.delete_all("frappe")
 print(gestSQL.select_all("frappe"))

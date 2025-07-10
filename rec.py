@@ -1,6 +1,6 @@
 import tkinter as tk
 
-def create_indicator():
+def create_indicator() -> None:
     root = tk.Tk()
     root.overrideredirect(True)  # Supprime la bordure/fenêtre
     root.attributes("-topmost", True)  # Toujours au-dessus
@@ -22,5 +22,3 @@ def create_indicator():
     root.attributes("-disabled", True)  # Non interactif
 
     root.mainloop()
-
-create_indicator()
