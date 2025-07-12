@@ -71,15 +71,26 @@ class AppKrono:
             timestamp = datetime.now().timestamp()
             touche_code = event.scan_code #code
             self.appui_touche_queue.put((timestamp, self.identifiant_session, touche_code))
-
         return
 
     def faire_commit_periodique(self) -> None:
+        """
+        Fait l’enregistrement dans la base de données à chaque deux secondes
+        Returns:
+            None
+        """
         while self.en_enregistrement:
             time.sleep(2)
             self.enregistre_dans_bd()
 
     def enregistre_dans_bd(self) -> None:
+        """
+        Vide les éléments de la queue dans une liste et insert les éléments de cette liste and la base de
+        donnée via GestionSQL.\n
+        Notifications dans le logger.
+        Returns:
+            None
+        """
         if self.appui_touche_queue.empty():
             return
         batch_data = []
@@ -95,25 +106,32 @@ class AppKrono:
         return
 
     def start(self) -> None:
-        self.logger.info("Nomos initialisation.")
+        """
+        Lance un thread pour enregister toutes les deux secondes.
+        Lance l’écoute des touches du clavier.\n
+        Notifications dans le logger.
+        Returns:
+            None
+        """
         self.logger.info("Start de AppKrono.")
+        self.en_enregistrement = True
         ecoute_thread = threading.Thread(target=self.faire_commit_periodique)
         ecoute_thread.daemon = True
         ecoute_thread.start()
 
         self.logger.info("Debut enregistrement de touche.")
-        self.en_enregistrement = True
         keyboard.hook(self.ecoute)
         keyboard.wait('esc')
         self.logger.info("Fin enregistrement de touche.")
 
         self.logger.info("Fermeture.")
-        self.en_enregistrement = False
         self.enregistre_dans_bd()
         self.logger.info("Fin.")
+        self.en_enregistrement = False
+        return
 
 # Empecher plusieurs lancements
-lock_path = os.path.join(os.path.expanduser("~"), ".appkrono.lock")
+lock_path = os.path.join(os.path.expanduser("~"), ".Nomos.lock")
 lock = FileLock(lock_path)
 
 try:

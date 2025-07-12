@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 from logging.handlers import RotatingFileHandler
 from typing import Optional
 import yaml
@@ -10,7 +11,7 @@ from datetime import datetime
 class GestionSqlite:
     """
     Class GestionSqlite permet de gérer les transactions avec la base de données en paramètre (path de la base) lors de sa création.
-    Dois être de schéma spécifié dans `__init__’.\n
+    Dois être de schéma spécifié dans `__init__'.\n
     Etablie une connection sécurisée, travail de logging et fermeture propre avec nettoyage.\n
     Utilise les instructions sql présent dans le répertoire `info_sql` qui sont en adéquation avec le schéma de la base.
     """
@@ -24,8 +25,17 @@ class GestionSqlite:
             logger (logging.Logger): Non du logger si logger partagé est souhaité
         """
         self.nom_db = nom_db
-        self.connection = sqlite3.connect(nom_db)
-        self.cursor = self.connection.cursor()
+        self.connection = None
+        self.cursor = None
+        self.lock = threading.Lock()
+        self.ouvert = False
+
+        # Initialiser la connexion
+        try:
+            self.connection = sqlite3.connect(nom_db, check_same_thread=False)
+            self.cursor = self.connection.cursor()
+        except Exception as e:
+            raise Exception(f"Erreur lors de la connexion à la base de données : {e}")
 
         # Logger
         log_dir = "logs"
@@ -45,30 +55,42 @@ class GestionSqlite:
                 self.logger.addHandler(file_handler)
             self.logger.info("=== === === GestionSqlite initialisée avec logger par défaut. === === ===")
 
-        # Chargement des scriptes
-        with open("info_sql/insertion.yaml", "r") as file:
-            self.commande_insert = yaml.safe_load(file)
+        # Chargement des scriptes avec gestion d'erreurs
+        try:
+            with open("info_sql/insertion.yaml", "r") as file:
+                self.commande_insert = yaml.safe_load(file)
 
-        with open("info_sql/selection.yaml", "r") as file:
-            self.commande_select = yaml.safe_load(file)
+            with open("info_sql/selection.yaml", "r") as file:
+                self.commande_select = yaml.safe_load(file)
 
-        with open("info_sql/modification.yaml", "r") as file:
-            self.commande_update = yaml.safe_load(file)
+            with open("info_sql/modification.yaml", "r") as file:
+                self.commande_update = yaml.safe_load(file)
 
-        with open("info_sql/suppression.yaml", "r") as file:
-            self.commande_delete = yaml.safe_load(file)
+            with open("info_sql/suppression.yaml", "r") as file:
+                self.commande_delete = yaml.safe_load(file)
 
-        with open("info_sql/setup.yaml", "r") as file:
-            self.setup = yaml.safe_load(file)
-        self.logger.info("Chargement des scriptes SQL fait.")
+            with open("info_sql/setup.yaml", "r") as file:
+                self.setup = yaml.safe_load(file)
+            self.logger.info("Chargement des scriptes SQL fait.")
+        except Exception as e:
+            self.logger.error(f"Erreur lors du chargement des scripts SQL : {e}")
+            self.fin()
+            raise
 
         # Etablissement de la connection
-        self.cursor.execute(self.setup["pragma_secure"])
-        self.connection.commit()
-        assert self.cursor.execute("PRAGMA secure_delete").fetchone()[0] == 1, "La suppression n'est pas sécurisé"
-        self.ouvert = True
-        self.logger.info("Connection faite et ouverte avec secure applique.")
-        return
+        try:
+            with self.lock:
+                self.cursor.execute(self.setup["pragma_secure"])
+                self.connection.commit()
+                result = self.cursor.execute("PRAGMA secure_delete").fetchone()
+                if not result or result[0] != 1:
+                    self.logger.warning("La suppression sécurisée n'est pas activée")
+                self.ouvert = True
+                self.logger.info("Connection faite et ouverte avec secure applique.")
+        except Exception as e:
+            self.logger.error(f"Erreur lors de l'établissement de la connexion : {e}")
+            self.fin()
+            raise
 
     def __str__(self) -> str:
         """
@@ -76,9 +98,17 @@ class GestionSqlite:
         Returns:
             str: La représentation en chaine de character de la liste des éléments de la bd
         """
-        tables = self.cursor.execute(self.setup["gestionSQL_string"])
-        tables = tables.fetchall()
-        return str(tables)
+        if not self.est_ouvert():
+            return "Connexion fermée"
+
+        try:
+            with self.lock:
+                tables = self.cursor.execute(self.setup["gestionSQL_string"])
+                tables = tables.fetchall()
+                return str(tables)
+        except Exception as e:
+            self.logger.error(f"Erreur lors de l'affichage des tables : {e}")
+            return f"Erreur : {e}"
 
     def __del__(self) -> None:
         """
@@ -89,13 +119,20 @@ class GestionSqlite:
         self.fin()
         return
 
-    def est_ferme(self) -> bool:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.fin()
+        return False
+
+    def est_ouvert(self) -> bool:
         """
-        Renvoie thrue si la connection est fermé, false sinon
+        Renvoie true si la connection est ouverte, false sinon
         Returns:
-            bool: La négation du champs self.ouvert
+            bool: L'état du champ self.ouvert
         """
-        return not self.ouvert
+        return self.ouvert
 
     def ajout_jeu(self, nom: str, description: str, favori: bool, touche1: str, touche2: str, touche3: str,
                   touche4: str) -> None:
@@ -114,19 +151,25 @@ class GestionSqlite:
         Returns:
             None
         """
-        try:
-            if description == "" or description is None:
-                self.cursor.execute(
-                    self.commande_insert["insertions_jeu_sans_descr"],
-                    (nom, favori, touche1, touche2, touche3, touche4))
-            else:
-                self.cursor.execute(
-                    self.commande_insert["insertions_jeu_descr"],
-                    (nom, description, favori, touche1, touche2, touche3, touche4))
-            self.connection.commit()
-            self.logger.info("Insertion d'un nouveau jeu faite.")
-        except Exception as e:
-            self.logger.error("Erreur" + str(e) + "pour un nouveau jeu")
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'ajout sur une connexion fermée")
+            return
+
+        with self.lock:
+            try:
+                if description == "" or description is None:
+                    self.cursor.execute(
+                        self.commande_insert["insertions_jeu_sans_descr"],
+                        (nom, favori, touche1, touche2, touche3, touche4))
+                else:
+                    self.cursor.execute(
+                        self.commande_insert["insertions_jeu_descr"],
+                        (nom, description, favori, touche1, touche2, touche3, touche4))
+                self.connection.commit()
+                self.logger.info("Insertion d'un nouveau jeu faite.")
+            except Exception as e:
+                self.logger.error(f"Erreur {e} pour un nouveau jeu")
+                self.connection.rollback()
         return
 
     def select_all(self, nom: str) -> Optional[list]:
@@ -134,19 +177,24 @@ class GestionSqlite:
         Selection de tous les éléments de la table donnée en paramètre et la renvoie.\n
         Notifications dans le logger.
         Args:
-            nom (str) : Le nom de la table
+            nom (str) : Le nom de la table
 
         Returns:
-            Optional[list] : Une liste si la table n’est pas vide, None sinon
+            Optional[list] : Une liste si la table n'est pas vide, None sinon
         """
-        try:
-            self.cursor.execute(
-                self.commande_select[f"selection_{nom}"]
-            )
-            res = self.cursor.fetchall()
-            return res
-        except Exception as e:
-            self.logger.error("Erreur" + str(e) + "pour la selection dans la table" + nom)
+        if not self.est_ouvert():
+            self.logger.error("Tentative de sélection sur une connexion fermée")
+            return None
+
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select[f"selection_{nom}"]
+                )
+                res = self.cursor.fetchall()
+                return res
+            except Exception as e:
+                self.logger.error(f"Erreur {e} pour la selection dans la table {nom}")
         return None
 
     def delete_all(self, nom: str) -> None:
@@ -159,14 +207,20 @@ class GestionSqlite:
         Returns:
             None
         """
-        try:
-            self.cursor.execute(
-                self.commande_delete[f"suppression_{nom}"]
-            )
-            self.connection.commit()
-            self.logger.info(f"Suppression de tout tuples de {nom}")
-        except Exception as e:
-            self.logger.error("Erreur" + str(e) + "pour la suppression")
+        if not self.est_ouvert():
+            self.logger.error("Tentative de suppression sur une connexion fermée")
+            return
+
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_delete[f"suppression_{nom}"]
+                )
+                self.connection.commit()
+                self.logger.info(f"Suppression de tout tuples de {nom}")
+            except Exception as e:
+                self.logger.error(f"Erreur {e} pour la suppression")
+                self.connection.rollback()
         return
 
     def nettoyage(self) -> None:
@@ -177,19 +231,22 @@ class GestionSqlite:
         Returns:
             None
         """
-        if self.est_ferme():
+        if not self.est_ouvert():
             return
 
         try:
-            if self.cursor and not self.est_ferme():
+            if self.cursor and self.connection:
                 self.logger.info("Début du nettoyage de la base de données.")
-                self.cursor.execute(
-                    self.setup["nettoyage"]
-                )
+                self.cursor.execute(self.setup["nettoyage"])
                 self.connection.commit()
                 self.logger.info("Nettoyage terminé avec succès.")
         except Exception as e:
-            self.logger.warning(f"Erreur lors du nettoyage : {e}.")
+            self.logger.warning(f"Erreur lors du nettoyage : {e}")
+            try:
+                if self.connection:
+                    self.connection.rollback()
+            except Exception as rollback_error:
+                self.logger.warning(f"Erreur lors du rollback : {rollback_error}")
         return
 
     def fin(self):
@@ -199,51 +256,86 @@ class GestionSqlite:
         Returns:
             None
         """
-        if self.est_ferme():
-            self.logger.debug("Tentative de fermeture d'une connexion déjà fermée.")
+        if not self.est_ouvert():
             return
+
         try:
             self.logger.info("Début de la fermeture de la connexion BD.")
-            self.nettoyage()
 
-            if self.cursor and not self.est_ferme():
-                self.cursor.close()
-                self.logger.debug("Cursor fermée.")
+            # Nettoyage seulement si la connexion est encore active
+            if self.connection:
+                try:
+                    self.nettoyage()
+                except Exception as e:
+                    self.logger.warning(f"Erreur lors du nettoyage pendant la fermeture : {e}")
 
-            if self.connection and not self.est_ferme():
-                self.connection.close()
-                self.logger.debug("Connexion fermée.")
+            # Fermeture du cursor
+            if self.cursor:
+                try:
+                    self.cursor.close()
+                    self.logger.info("Cursor fermé.")
+                except Exception as e:
+                    self.logger.warning(f"Erreur lors de la fermeture du cursor : {e}")
+                finally:
+                    self.cursor = None
+
+            # Fermeture de la connexion
+            if self.connection:
+                try:
+                    self.connection.close()
+                    self.logger.info("Connexion fermée.")
+                except Exception as e:
+                    self.logger.warning(f"Erreur lors de la fermeture de la connexion : {e}")
+                finally:
+                    self.connection = None
 
             self.logger.info("Fermeture BD terminée avec succès.")
         except Exception as e:
-            self.logger.error(f"Erreur lors du connexion : {e}")
+            self.logger.error(f"Erreur lors de la fermeture de la connexion : {e}")
         finally:
             self.ouvert = False
+            self.cursor = None
+            self.connection = None
+
+        # Fermeture propre des handlers de log
+        try:
+            for handler in self.logger.handlers[:]:
+                if isinstance(handler, RotatingFileHandler):
+                    handler.close()
+                    self.logger.removeHandler(handler)
+        except Exception as e:
+            pass
         return
 
     def insertion_touche(self, liste_touches: list[tuple[int, str, int, int]]) -> None:
         """
-        Prends une liste de touche dont les éléments sont [str, int, int, int] et insert les éléments dans la table
-        touche, gère l’identifiant des touches.\n
+        Prends une liste de touche dont les éléments sont [int, str, int, int] et insert les éléments dans la table
+        touche, gère l'identifiant des touches.\n
         Notifications dans le logger.
         Args:
-            liste_touches (list): Une liste de touche(`tuple`) que l’on insère dans la table touche
+            liste_touches (list): Une liste de touche(`tuple`) que l'on insère dans la table touche
 
         Returns:
             None
         """
-        try:
-            self.cursor.executemany(
-                self.commande_insert["insertion_touche"],
-                liste_touches,
-            )
-            self.connection.commit()
-            self.logger.info("Insertion dans la table touche du liste des touches.")
-        except Exception as e:
-            self.logger.error(f"Erreur lors de l'initialisation de touche : {e}")
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            return
+
+        with self.lock:
+            try:
+                self.cursor.executemany(
+                    self.commande_insert["insertion_touche"],
+                    liste_touches,
+                )
+                self.connection.commit()
+                self.logger.info("Insertion dans la table touche du liste des touches.")
+            except Exception as e:
+                self.logger.error(f"Erreur lors de l'initialisation de touche : {e}")
+                self.connection.rollback()
         return
 
-    def insertion_frappe(self, frappes:list[tuple[int, int, int]]) -> None:
+    def insertion_frappe(self, frappes: list[tuple[int, int, int]]) -> None:
         """
         Insert les paramètre comme un tuple dans la table frappe.
         Notifications dans le logger.\n
@@ -253,47 +345,81 @@ class GestionSqlite:
         Returns:
             None
         """
-        try:
-            self.cursor.executemany(
-                self.commande_insert["insertion_frappe"],
-                frappes,
-            )
-            self.connection.commit()
-        except Exception as e:
-            self.logger.error(f"Erreur lors d'une enregistrement de frappe : {e}")
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            return
+
+        if not frappes:
+            return
+
+        with self.lock:
+            try:
+                self.cursor.executemany(
+                    self.commande_insert["insertion_frappe"],
+                    frappes,
+                )
+                self.connection.commit()
+                self.logger.info(f"Insertion de {len(frappes)} frappes réussie.")
+                for handler in self.logger.handlers:
+                    handler.flush()
+            except Exception as e:
+                self.logger.error(f"Erreur lors d'un enregistrement de frappe : {e}")
+                self.connection.rollback()
+        return
 
     def test(self):
-        try:
-            self.logger.info("Test de la connexion BD.")
-            self.cursor.execute(
-                "SELECT * FROM frappe, touche WHERE frappe.code = touche.code ORDER BY id_frappe")
-            res = self.cursor.fetchall()
-            return res
-        except Exception as e:
-            self.logger.info(f"{e}")
+        """
+        Méthode de test pour vérifier la connexion
+        """
+        if not self.est_ouvert():
+            self.logger.error("Tentative de test sur une connexion fermée")
+            return None
+
+        with self.lock:
+            try:
+                self.logger.info("Test de la connexion BD.")
+                self.cursor.execute(
+                    "SELECT * FROM frappe, touche WHERE frappe.code = touche.code ORDER BY id_frappe")
+                res = self.cursor.fetchall()
+                return res
+            except Exception as e:
+                self.logger.error(f"Erreur lors du test : {e}")
+                return None
 
 
-gestSQL = GestionSqlite("mesures.db")
-print(gestSQL)
+if __name__ == "__main__":
+    gestSQL = None
+    try:
+        gestSQL = GestionSqlite("mesures.db")
+        print(gestSQL)
 
-print("=== Test jeu")
-gestSQL.ajout_jeu("lol", "", True, "a", "z", "e", "r")
-print(gestSQL.select_all("jeu"))
-gestSQL.delete_all("jeu")
-print(gestSQL.select_all("jeu"))
+        print("=== Test jeu")
+        gestSQL.ajout_jeu("lol", "", True, "a", "z", "e", "r")
+        print(gestSQL.select_all("jeu"))
+        gestSQL.delete_all("jeu")
+        print(gestSQL.select_all("jeu"))
 
-print("=== Test touche")
-gestSQL.insertion_touche([(10,"a",1,1),(20,"b",2,2),(30,"c",3,3)])
-print(gestSQL.select_all("touche"))
+        print("=== Test touche")
+        gestSQL.insertion_touche([(10, "a", 1, 1), (20, "b", 2, 2), (30, "c", 3, 3)])
+        print(gestSQL.select_all("touche"))
 
-print("=== Test frappe")
-gestSQL.insertion_frappe([(int(datetime.now().timestamp()),25,10),(int(datetime.now().timestamp()),25,10),(int(datetime.now().timestamp()),25,30)])
-gestSQL.insertion_frappe([(int(datetime.now().timestamp()),26,50),(int(datetime.now().timestamp()),26,10),(int(datetime.now().timestamp()),26,10)])
+        print("=== Test frappe")
+        gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 25, 10), (int(datetime.now().timestamp()), 25, 10),
+                                  (int(datetime.now().timestamp()), 25, 30)])
+        gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 26, 50), (int(datetime.now().timestamp()), 26, 10),
+                                  (int(datetime.now().timestamp()), 26, 10)])
 
-print(gestSQL.test())
+        print(gestSQL.test())
 
-print(gestSQL.select_all("frappe"))
-gestSQL.delete_all("frappe")
-print(gestSQL.select_all("frappe"))
-gestSQL.delete_all("touche")
-print(gestSQL.select_all("touche"))
+        print(gestSQL.select_all("frappe"))
+        gestSQL.delete_all("frappe")
+        print(gestSQL.select_all("frappe"))
+        gestSQL.delete_all("touche")
+        print(gestSQL.select_all("touche"))
+        gestSQL.fin()
+
+    except Exception as e:
+        print(f"Erreur dans le programme principal : {e}")
+    finally:
+        if gestSQL:
+            gestSQL.fin()
