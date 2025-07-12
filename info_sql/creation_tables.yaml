@@ -1,21 +1,22 @@
 table_jeu: |
   CREATE TABLE "jeu" (
-  	"nom"	TEXT,
-  	"description"	TEXT,
-  	"favori"	NUMERIC NOT NULL DEFAULT 0 CHECK(favori IN (0, 1)),
-  	"touche_def_1"	TEXT UNIQUE,
-  	"touche_def_2"	TEXT UNIQUE,
-  	"touche_def_3"	TEXT UNIQUE,
-  	"touche_def_4"	TEXT UNIQUE,
-  	PRIMARY KEY("nom")
+	"nom"	TEXT,
+	"description"	TEXT,
+	"favori"	NUMERIC NOT NULL DEFAULT 0 CHECK(favori IN (0, 1)),
+	"touche_def_1"	TEXT UNIQUE,
+	"touche_def_2"	TEXT UNIQUE,
+	"touche_def_3"	TEXT UNIQUE,
+	"touche_def_4"	TEXT UNIQUE,
+	PRIMARY KEY("nom")
   );
 
 table_touche: |
   CREATE TABLE "touche" (
-	"id_touche"	TEXT,
-	"code_touche"	NUMERIC NOT NULL,
+	"code"	INTEGER,
 	"representation"	TEXT NOT NULL,
-	PRIMARY KEY("id_touche")
+	"x"	INTEGER NOT NULL,
+	"y"	INTEGER NOT NULL,
+	PRIMARY KEY("code")
   );
   
 table_session: |
@@ -29,11 +30,11 @@ table_session: |
 
 table_frappe: |
   CREATE TABLE "frappe" (
-  	"id_frappe"	INTEGER,
-  	"horodatage"	INTEGER NOT NULL,
-  	"id_session"	INTEGER NOT NULL,
-  	"id_touche"	INTEGER NOT NULL,
-  	PRIMARY KEY("id_frappe" AUTOINCREMENT),
-  	FOREIGN KEY("id_session") REFERENCES "session"("id_session"),
-  	FOREIGN KEY("id_touche") REFERENCES "touche"("id_touche")
+	"id_frappe"	INTEGER,
+	"horodatage"	REAL NOT NULL,
+	"id_session"	INTEGER NOT NULL,
+	"code"	INTEGER NOT NULL,
+	PRIMARY KEY("id_frappe"),
+	FOREIGN KEY("code") REFERENCES "touche"("code"),
+	FOREIGN KEY("id_session") REFERENCES "session"("id_session")
   );

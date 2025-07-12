@@ -105,6 +105,9 @@ class AppKrono:
             self.bd.insertion_frappe(batch_data)
         return
 
+    def setup_touche(self) -> None:
+        pass
+
     def start(self) -> None:
         """
         Lance un thread pour enregister toutes les deux secondes.
