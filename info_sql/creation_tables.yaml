@@ -38,3 +38,13 @@ table_frappe: |
 	FOREIGN KEY("code") REFERENCES "touche"("code"),
 	FOREIGN KEY("id_session") REFERENCES "session"("id_session")
   );
+
+table_apm: |
+  CREATE TABLE "amp" (
+	"id_apm"	INTEGER,
+	"num_min"	INTEGER NOT NULL,
+	"nb_pression"	INTEGER NOT NULL,
+	"id_session"	INTEGER NOT NULL,
+	PRIMARY KEY("id_apm"),
+	FOREIGN KEY("id_session") REFERENCES "session"("id_session")
+  );

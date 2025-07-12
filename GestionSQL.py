@@ -367,6 +367,28 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
+    def enregistrement_mapping(self, mapping:dict[int:list]) -> None:
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            return
+
+        data = [(k, *v) for k, v in mapping.items()]
+
+        with self.lock:
+            try:
+                self.cursor.executemany(
+                    self.commande_insert["insertion_touche"],
+                    data,
+                )
+                self.connection.commit()
+                self.logger.info(f"Insertion de {len(data)} touches.")
+                for handler in self.logger.handlers[:]:
+                    handler.flush()
+            except Exception as e:
+                self.logger.error(f"Erreur d'insertion de touche : {e}")
+                self.connection.rollback()
+        return
+
     def test(self):
         """
         Méthode de test pour vérifier la connexion

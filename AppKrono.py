@@ -18,6 +18,7 @@ class AppKrono:
         self.identifiant_session = int(datetime.now().timestamp())
         self.en_enregistrement = False
         self.appui_touche_queue = queue.Queue()
+        self.mapping = None
         self.bd = None
 
         # Configuration du répertoire des logs
@@ -105,8 +106,37 @@ class AppKrono:
             self.bd.insertion_frappe(batch_data)
         return
 
-    def setup_touche(self) -> None:
-        pass
+    def setup_mapping(self) -> None:
+        azerty_layout = [
+            ['Echap', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'],
+            ['²', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ')', '=', 'Retour'],
+            ['Tab', 'a', 'z', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '^', '$', 'Entrer'],
+            ['Verr.maj', 'q', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'ù', '*'],
+            ['Shift', '<', 'w', 'x', 'c', 'v', 'b', 'n', ',', ';', ':', '!', 'Shift'],
+            ['Ctrl', 'Win', 'Alt', 'Space', 'AltGr', 'Menu', 'Ctrl'],
+            ['Haut', 'Bas', 'Gauche', 'Droite']
+        ]
+
+        self.mapping = {}
+
+        print("Touche par touche, appuie sur les touches suivantes dans l'ordre affiché.")
+        time.sleep(3)
+
+        for row_idx, row in enumerate(azerty_layout):
+            for col_idx, label in enumerate(row):
+                while True:
+                    print(f"Appuie sur : {label} (ligne {row_idx}, col {col_idx})")
+                    event = keyboard.read_event()
+                    if event.event_type == 'down':
+                        self.mapping[event.scan_code] = [label, row_idx, col_idx]
+                        print(
+                            f"Capturé : scan_code={event.scan_code}, symbole={label}, position=({row_idx}, {col_idx})\n")
+                        break
+
+        print("\nMapping terminé ! \n")
+        print(self.mapping)
+        time.sleep(3)
+        return
 
     def start(self) -> None:
         """
