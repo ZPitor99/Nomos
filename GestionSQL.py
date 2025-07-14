@@ -7,6 +7,8 @@ import logging
 import os
 from datetime import datetime
 
+from Flushhandler import FlushableRotatingFileHandler
+
 
 class GestionSqlite:
     """
@@ -50,7 +52,7 @@ class GestionSqlite:
             self.logger = logging.getLogger("GestionSqlite")
             self.logger.setLevel(logging.INFO)
             if not self.logger.handlers:
-                file_handler = RotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+                file_handler = FlushableRotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
                 file_handler.setFormatter(logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s'))
                 self.logger.addHandler(file_handler)
             self.logger.info("=== === === GestionSqlite initialisée avec logger par défaut. === === ===")
@@ -237,6 +239,7 @@ class GestionSqlite:
         try:
             if self.cursor and self.connection:
                 self.logger.info("Début du nettoyage de la base de données.")
+                self.delete_all("frappe")
                 self.cursor.execute(self.setup["nettoyage"])
                 self.connection.commit()
                 self.logger.info("Nettoyage terminé avec succès.")
@@ -300,7 +303,7 @@ class GestionSqlite:
         # Fermeture propre des handlers de log
         try:
             for handler in self.logger.handlers[:]:
-                if isinstance(handler, RotatingFileHandler):
+                if isinstance(handler, FlushableRotatingFileHandler) or isinstance(handler, RotatingFileHandler):
                     handler.close()
                     self.logger.removeHandler(handler)
         except Exception as e:
@@ -364,6 +367,24 @@ class GestionSqlite:
                     handler.flush()
             except Exception as e:
                 self.logger.error(f"Erreur lors d'un enregistrement de frappe : {e}")
+                self.connection.rollback()
+        return
+
+    def insertion_session(self, id_session: int, info_session:str, jeu:str ) -> None:
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            return
+
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_insert["insertion_sessions_vierge"],
+                    (id_session, info_session, jeu),
+                )
+                self.connection.commit()
+                self.logger.info(f"Insertion de la session")
+            except Exception as e:
+                self.logger.error(f"Erreur lors de l'insertion de la session: {e}")
                 self.connection.rollback()
         return
 

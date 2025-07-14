@@ -6,7 +6,7 @@ import queue
 import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler
+from Flushhandler import FlushableRotatingFileHandler
 from filelock import FileLock, Timeout
 
 import GestionSQL as gsql
@@ -32,8 +32,9 @@ class AppKrono:
         self.logger.propagate = False  # Évite les doublons si plusieurs loggers
 
         # Handler fichier avec rotation
-        file_handler = RotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+        file_handler = FlushableRotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
         file_handler.setFormatter(logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s'))
+        file_handler.flush = lambda: file_handler.stream.flush() if file_handler.stream else None
 
         # Handler console
         stream_handler = logging.StreamHandler()
@@ -51,9 +52,29 @@ class AppKrono:
             self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
         return
 
-    # def initialisation_touches(self) -> None:
-    #     pass
-    #     return
+    def __del__(self):
+        self.fin()
+        return
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.fin()
+        return
+
+    def fin(self):
+        try:
+            self.logger.info("Fermeture de la bd.")
+            self.bd = None
+            self.logger.info("fermeture du logger.")
+            for handler in self.logger.handlers[:]:
+                if isinstance(handler, FlushableRotatingFileHandler):
+                    handler.close()
+                    self.logger.removeHandler(handler)
+        except Exception as e:
+            pass
+        return
 
     def ecoute(self, event) -> None:
         """
@@ -81,7 +102,7 @@ class AppKrono:
             None
         """
         while self.en_enregistrement:
-            time.sleep(2)
+            time.sleep(4)
             self.enregistre_dans_bd()
 
     def enregistre_dans_bd(self) -> None:
@@ -135,7 +156,31 @@ class AppKrono:
 
         print("\nMapping terminé ! \n")
         print(self.mapping)
+        self.logger.info("Mapping fait, envoie des données dans la bd.")
+        self.bd.enregistrement_mapping(self.mapping)
         time.sleep(3)
+        return
+
+    def doit_etre_mapper(self) -> bool:
+        self.logger.info("Verification si besoin de mapping.")
+        result = self.bd.select_all("touche")
+        if not result:
+            return True
+        else:
+            return False
+
+    def faire_mapping(self) -> None:
+        if self.doit_etre_mapper():
+            self.setup_mapping()
+            self.logger.info("Mapping terminé.")
+            return
+        else:
+            self.logger.info("Mapping déjà fait.")
+            return
+
+    def setup_session(self, info:str, jeu:str) -> None:
+        self.logger.info("Setting up session basique")
+        self.bd.insertion_session(self.identifiant_session, info, jeu)
         return
 
     def start(self) -> None:
@@ -171,7 +216,10 @@ try:
     with lock:
         if __name__ == "__main__":
             en_cour = AppKrono()
+            en_cour.setup_session("Session test", "")
+            en_cour.faire_mapping()
             en_cour.start()
+            en_cour.fin()
 except Timeout:
     print("L'application est déjà en cours d'exécution.")
     sys.exit(1)
