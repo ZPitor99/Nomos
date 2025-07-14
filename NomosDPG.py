@@ -5,7 +5,7 @@ import os
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 dpg.create_context()
-dpg.create_viewport(title='Hello World', width=1280, height=720)
+dpg.create_viewport(title='Nomos', width=1280, height=720)
 icon_path = "ressources/Nomos.ico"
 if os.path.exists(icon_path):
     dpg.set_viewport_small_icon(icon_path)
@@ -19,11 +19,31 @@ class MainWin:
         self.winID = "main_win"
         with dpg.window(tag=self.winID) as win_main:
             with dpg.menu_bar():
+                with dpg.menu(label="Fichier"):
+                    dpg.add_menu_item(label="Accueil")
+                    dpg.add_menu_item(label="Exporter données")
+                    dpg.add_menu_item(label="Plein écran", callback=lambda: dpg.toggle_viewport_fullscreen())
+                    dpg.add_menu_item(label="Paramètres")
+                    dpg.add_menu_item(label="Quitter", callback=lambda: dpg.stop_dearpygui())
+
+                with dpg.menu(label="Ecoute"):
+                    dpg.add_menu_item(label="Faire une écoute")
+
+                with dpg.menu(label="Stats"):
+                    dpg.add_menu_item(label="Statistique")
+                    dpg.add_menu_item(label="Clavier 2D")
+
+                with dpg.menu(label="Aide"):
+                    dpg.add_menu_item(label="Mode d'emploi")
+                    dpg.add_menu_item(label="Github")
+                    dpg.add_menu_item(label="Contact")
+                    dpg.add_menu_item(label="Dear PyGUI", callback=lambda: dpg.show_tool(dpg.mvTool_About))
+                    dpg.add_menu_item(label="A propos")
+                # DEV
                 with dpg.menu(label="Tools"):
                     dpg.add_menu_item(label="Show Debug", callback=lambda: dpg.show_tool(dpg.mvTool_Debug))
                     dpg.add_menu_item(label="Show Font Manager", callback=lambda: dpg.show_tool(dpg.mvTool_Font))
-                    dpg.add_menu_item(label="Show Item Registry",
-                                      callback=lambda: dpg.show_tool(dpg.mvTool_ItemRegistry))
+                    dpg.add_menu_item(label="Show Item Registry",callback=lambda: dpg.show_tool(dpg.mvTool_ItemRegistry))
                     dpg.add_menu_item(label="Show Metrics", callback=lambda: dpg.show_tool(dpg.mvTool_Metrics))
                     dpg.add_menu_item(label="Toggle Fullscreen", callback=lambda: dpg.toggle_viewport_fullscreen())
                     dpg.add_menu_item(label="Reopen all windows", callback=self.reopen_all_win)
@@ -33,6 +53,8 @@ class MainWin:
                 with dpg.theme_component(dpg.mvAll):
                     dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (20, 20, 25, 255))
             dpg.bind_item_theme(win_main, mainwin_theme)
+
+
 
 
     @staticmethod
