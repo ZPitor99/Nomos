@@ -13,8 +13,20 @@ import GestionSQL as gsql
 
 
 class AppKrono:
+    """
+    Class AppKrono s’occupe de mettre en place les éléments essentiels de l’application:
+        - Initialisation des éléments de base de l’application
+        - Ecoute et enregistrement périodique des appuis claviers
+    """
 
     def __init__(self) -> None:
+        """
+        Constructeur de la classe AppKrono. Initialise les éléments de base de l’application:
+            - Session
+            - Mapping
+            - Base de données (Instance de `GestionSQL`)
+            - Logger
+        """
         self.identifiant_session = int(datetime.now().timestamp())
         self.en_enregistrement = False
         self.appui_touche_queue = queue.Queue()
@@ -50,7 +62,14 @@ class AppKrono:
             self.bd = gsql.GestionSqlite("mesures.db", self.logger)
         except Exception as e:
             self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
+
+        self.setup_session("Session test", "")
+        self.faire_mapping()
         return
+
+    def __str__(self) -> str:
+        return f"AppKrono de session {self.identifiant_session} avec le status d'enregistrement {self.en_enregistrement}"
+
 
     def __del__(self):
         self.fin()
@@ -64,6 +83,13 @@ class AppKrono:
         return
 
     def fin(self):
+        """
+        Gère la fin des différents champs qui ont besoin de traitement de fin:
+            - self.logger
+            - self.bd
+        Returns:
+            None
+        """
         try:
             self.logger.info("Fermeture de la bd.")
             self.bd = None
@@ -97,7 +123,7 @@ class AppKrono:
 
     def faire_commit_periodique(self) -> None:
         """
-        Fait l’enregistrement dans la base de données à chaque deux secondes
+        Fait l’enregistrement dans la base de données à chaque quatre secondes
         Returns:
             None
         """
@@ -128,6 +154,12 @@ class AppKrono:
         return
 
     def setup_mapping(self) -> None:
+        """
+        Procède au mapping des touches.\n
+        Notifications dans le logger.
+        Returns:
+            None
+        """
         azerty_layout = [
             ['Echap', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'],
             ['²', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ')', '=', 'Retour'],
@@ -162,6 +194,12 @@ class AppKrono:
         return
 
     def doit_etre_mapper(self) -> bool:
+        """
+        Renvoie True si les touches ont besoin d’être mappé, False sinon.\n
+        Notifications dans le logger.
+        Returns:
+            (bool): True ou false en fonction du besoin de mapping
+        """
         self.logger.info("Verification si besoin de mapping.")
         result = self.bd.select_all("touche")
         if not result:
@@ -170,6 +208,12 @@ class AppKrono:
             return False
 
     def faire_mapping(self) -> None:
+        """
+        Gestion du mapping : vérification du besoin de mapping et le fait si besoin.\n
+        Notifications dans le logger.
+        Returns:
+            None
+        """
         if self.doit_etre_mapper():
             self.setup_mapping()
             self.logger.info("Mapping terminé.")
@@ -179,6 +223,16 @@ class AppKrono:
             return
 
     def setup_session(self, info:str, jeu:str) -> None:
+        """
+        Applique les informations de base de la session dans la bd.\n
+        Notifications dans le logger.
+        Args:
+            info (str): Information sur la session.
+            jeu (str): Jeu de la session.
+
+        Returns:
+            None
+        """
         self.logger.info("Setting up session basique")
         self.bd.insertion_session(self.identifiant_session, info, jeu)
         return
@@ -216,8 +270,6 @@ try:
     with lock:
         if __name__ == "__main__":
             en_cour = AppKrono()
-            en_cour.setup_session("Session test", "")
-            en_cour.faire_mapping()
             en_cour.start()
             en_cour.fin()
 except Timeout:

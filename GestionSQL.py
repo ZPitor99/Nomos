@@ -20,7 +20,7 @@ class GestionSqlite:
 
     def __init__(self, nom_db: str, logger: Optional[logging.Logger] = None) -> None:
         """
-        Créé une instance de la classe GestionSqlite. Utilise la base de donnée en paramètre, mais doit être de schéma
+        Constructeur de la classe GestionSqlite. Utilise la base de donnée en paramètre, mais doit être de schéma
         tel que spécifier dans bd1.pdf de type sqlite3.db.\n
         Args:
             nom_db (str): Nom de la base de donnée à laquelle se connecter
@@ -107,17 +107,12 @@ class GestionSqlite:
             with self.lock:
                 tables = self.cursor.execute(self.setup["gestionSQL_string"])
                 tables = tables.fetchall()
-                return str(tables)
+                return str(tables) + f"\n Base de données: {self.nom_db}"
         except Exception as e:
             self.logger.error(f"Erreur lors de l'affichage des tables : {e}")
             return f"Erreur : {e}"
 
-    def __del__(self) -> None:
-        """
-        Met fin à la connection avec la bd à la suppression de le l'instance de la classe
-        Returns:
-            None
-        """
+    def __del__(self):
         self.fin()
         return
 
