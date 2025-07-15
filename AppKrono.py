@@ -64,7 +64,7 @@ class AppKrono:
         except Exception as e:
             self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
 
-        self.setup_session("Session Archonte", "")
+        self.setup_session("Session test2 arena", "")
         self.faire_mapping()
         return
 
@@ -120,7 +120,7 @@ class AppKrono:
             if event.event_type == "down":
                 if event.name not in self.touches_enfoncees:
                     self.touches_enfoncees.add(event.name)
-                    self.appui_touche_queue.put((int(datetime.now().timestamp()), self.identifiant_session, event.scan_code))
+                    self.appui_touche_queue.put((float(datetime.now().timestamp()), self.identifiant_session, event.scan_code))
             elif event.event_type == "up":
                 self.touches_enfoncees.discard(event.name)
         except Exception as e:

@@ -5,3 +5,16 @@ selection_touche: SELECT * FROM touche
 selection_session: SELECT * FROM session
 
 selection_frappe: SELECT * FROM frappe
+
+selection_data_enregistrement: |
+  SELECT f.horodatage, f.code, t.representation
+  FROM frappe f
+  JOIN touche t ON f.code = t.code
+  WHERE f.id_session = ?
+  ORDER BY f.horodatage
+
+selection_clavier_2d: |
+  SELECT COUNT(*) AS nb_appui, representation, x, y 
+  FROM frappe f JOIN touche t 
+  WHERE f.code = t.code AND f.id_session = ? 
+  GROUP BY f.code

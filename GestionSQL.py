@@ -7,6 +7,7 @@ import logging
 import os
 from datetime import datetime
 
+from AnalyseEnregistrement import Enregistrement
 from Flushhandler import FlushableRotatingFileHandler
 
 
@@ -404,6 +405,29 @@ class GestionSqlite:
                 self.logger.error(f"Erreur d'insertion de touche : {e}")
                 self.connection.rollback()
         return
+
+    def data_enregistrement(self, id_session:int) -> list[Enregistrement]:
+        if not self.est_ouvert():
+            self.logger.error("Tentative de selection sur une connexion fermée")
+            return []
+
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select["selection_data_enregistrement"],
+                    (id_session,),
+                )
+
+                liste_enregistrement = [
+                    Enregistrement(timestamp=row[0], key_code=row[1], key_repr=row[2])
+                    for row in self.cursor.fetchall()
+                ]
+
+                self.logger.info(f"Chargé {len(liste_enregistrement)} frappes")
+                return liste_enregistrement
+            except Exception as e:
+                self.logger.error(f"Erreur lors de la selection de data_enregistrement : {e}")
+        return []
 
     def test(self):
         """
