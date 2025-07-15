@@ -234,7 +234,7 @@ class GestionSqlite:
         try:
             if self.cursor and self.connection:
                 self.logger.info("Début du nettoyage de la base de données.")
-                self.delete_all("frappe")
+                #self.delete_all("frappe")
                 self.cursor.execute(self.setup["nettoyage"])
                 self.connection.commit()
                 self.logger.info("Nettoyage terminé avec succès.")

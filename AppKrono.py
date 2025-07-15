@@ -29,6 +29,7 @@ class AppKrono:
         """
         self.identifiant_session = int(datetime.now().timestamp())
         self.en_enregistrement = False
+        self.touches_enfoncees = set()
         self.appui_touche_queue = queue.Queue()
         self.mapping = None
         self.bd = None
@@ -63,7 +64,7 @@ class AppKrono:
         except Exception as e:
             self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
 
-        self.setup_session("Session test", "")
+        self.setup_session("Session Archonte", "")
         self.faire_mapping()
         return
 
@@ -115,11 +116,16 @@ class AppKrono:
         Returns:
             None
         """
-        if event.event_type == "down":
-            timestamp = datetime.now().timestamp()
-            touche_code = event.scan_code #code
-            self.appui_touche_queue.put((timestamp, self.identifiant_session, touche_code))
-        return
+        try:
+            if event.event_type == "down":
+                if event.name not in self.touches_enfoncees:
+                    self.touches_enfoncees.add(event.name)
+                    self.appui_touche_queue.put((int(datetime.now().timestamp()), self.identifiant_session, event.scan_code))
+            elif event.event_type == "up":
+                self.touches_enfoncees.discard(event.name)
+        except Exception as e:
+            self.logger.error(f"Erreur dans l'écoute de touche: {e}")
+            return
 
     def faire_commit_periodique(self) -> None:
         """
@@ -253,7 +259,7 @@ class AppKrono:
 
         self.logger.info("Debut enregistrement de touche.")
         keyboard.hook(self.ecoute)
-        keyboard.wait('esc')
+        keyboard.wait('+')
         self.logger.info("Fin enregistrement de touche.")
 
         self.logger.info("Fermeture.")
