@@ -64,7 +64,7 @@ class AppKrono:
         except Exception as e:
             self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
 
-        self.setup_session("Session test2 arena", "")
+        self.setup_session("Session test3 game", "")
         self.faire_mapping()
         return
 

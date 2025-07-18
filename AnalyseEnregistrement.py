@@ -8,14 +8,14 @@ class Enregistrement:
     key_code: int
     key_repr: str
 
-class AnalyseEnregistrementbis:
+class AnalyseEnregistrement:
     def __init__(self, data:list[Enregistrement]):
         self.liste_enregistrement = data
         self.patterns = defaultdict(int)
         self.spam_stats = {}
         self.intervales = {}
 
-    def analyse_patterns(self):
+    def analyse_patterns(self) -> list[tuple[str, int]]:
         for i in range(len(self.liste_enregistrement) - 1):
             courant = self.liste_enregistrement[i].key_repr
             suivant = self.liste_enregistrement[i + 1].key_repr
@@ -32,8 +32,8 @@ class AnalyseEnregistrementbis:
         self.patterns = patterns_trie
         return self.patterns
 
-    def analyse_spam_stats(self, longueur_spam_min: int = 3):
-        spam_sequences = defaultdict(list)  # touche -> [longueurs des séquences]
+    def analyse_spam_stats(self, longueur_spam_min: int = 3) -> dict:
+        spam_sequences = defaultdict(list)
 
         if not self.liste_enregistrement:
             return {}
@@ -85,9 +85,9 @@ class AnalyseEnregistrementbis:
         self.spam_stats = spam_stats
         return self.spam_stats
 
-    def analyse_intervales(self, considere_pause: float = 5.0):
+    def analyse_intervales(self, considere_pause: float = 5.0) -> dict[str, float]:
         if len(self.liste_enregistrement) < 2:
-            return None
+            return {}
 
         intervals = []
         longue_pauses = 0
