@@ -243,6 +243,14 @@ class AppKrono:
         self.bd.insertion_session(self.identifiant_session, info, jeu)
         return
 
+    def session_fin(self):
+        horaire = int(datetime.now().timestamp())
+        try:
+            self.bd.modification_fin_session(horaire, self.identifiant_session)
+            self.logger.info("Horaire fin session changé.")
+        except Exception as e:
+            self.logger.error(f"Problème horaire fin : {e}.")
+
     def start(self) -> None:
         """
         Lance un thread pour enregister toutes les deux secondes.
@@ -260,6 +268,7 @@ class AppKrono:
         self.logger.info("Debut enregistrement de touche.")
         keyboard.hook(self.ecoute)
         keyboard.wait('+')
+        self.session_fin()
         self.logger.info("Fin enregistrement de touche.")
 
         self.logger.info("Fermeture.")

@@ -14,6 +14,7 @@ class MainWin:
         self.gestionnaire_windows.nouvelle_window("Accueil", AccueilWindow())
 
         self.fait_naitre_main_window()
+        return
 
     def fait_naitre_main_window(self):
         with dpg.window(tag=self.winID) as win_main:
@@ -59,6 +60,7 @@ class MainWin:
                 with dpg.theme_component(dpg.mvAll):
                     dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (20, 20, 25, 255))
             dpg.bind_item_theme(win_main, mainwin_theme)
+        return
 
 
 class GestionWindow:
@@ -66,6 +68,7 @@ class GestionWindow:
         self.parent = parent_id
         self.window_courante = None
         self.windows = {}
+        return
 
     def nouvelle_window(self, nom:str, window):
         window.parent_id = self.parent
@@ -85,17 +88,20 @@ class GestionWindow:
 
         dpg.show_item(actuel.winID)
         self.window_courante = actuel.winID
+        return
 
 class BebeWindow:
     def __init__(self, window_id):
         self.winID = window_id
         self.vivante = False
         self.parent_id = None
+        return
 
     def cree(self):
          if not self.vivante:
             self._naissance()
             self.vivante = True
+         return
 
     def _naissance(self):
         pass
@@ -103,6 +109,7 @@ class BebeWindow:
 class AccueilWindow(BebeWindow):
     def __init__(self):
         super().__init__("Accueil")
+        return
 
     def _naissance(self):
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
@@ -125,6 +132,7 @@ class AccueilWindow(BebeWindow):
                     dpg.add_text("Dernière écoute : Aucune")
                     dpg.add_text("Sessions totales : 0")
                     dpg.add_text("Temps total : 0h 0m")
+        return
 
 
 def main():
@@ -133,8 +141,8 @@ def main():
     try:
         from Theme_NeoDark import theme
         dpg.bind_theme(theme)
-    except ImportError:
-        print("Theme_NeoDark non trouvé, utilisation du thème par défaut")
+    except Exception as e:
+        print(f"Theme_NeoDark non trouvé, utilisation du thème par défaut {e}")
 
     main_win = MainWin()
 

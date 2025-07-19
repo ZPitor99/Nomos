@@ -1,0 +1,3 @@
+modification_fin_session: |
+  UPDATE session SET fin = ?
+  WHERE id_session = ?

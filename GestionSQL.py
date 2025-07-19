@@ -384,6 +384,24 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
+    def modification_fin_session(self, horaire:int, session_courante:int) -> None:
+        if not self.est_ouvert():
+            self.logger.error("Tentative de modification sur une connexion fermée")
+            return
+
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_update["modification_fin_session"],
+                    (horaire,session_courante),
+                )
+                self.connection.commit()
+                self.logger.info(f"Modification de la session : horaire de fin : {horaire}")
+            except Exception as e:
+                self.logger.error(f"Erreur lors de la modification de la session: {e}")
+                self.connection.rollback()
+        return
+
     def enregistrement_mapping(self, mapping:dict[int:list]) -> None:
         if not self.est_ouvert():
             self.logger.error("Tentative d'insertion sur une connexion fermée")
