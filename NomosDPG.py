@@ -4,21 +4,13 @@ import os
 
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
-dpg.create_context()
-dpg.create_viewport(title='Nomos', width=1280, height=720)
-icon_path = "ressources/Nomos.ico"
-if os.path.exists(icon_path):
-    dpg.set_viewport_small_icon(icon_path)
-    dpg.set_viewport_large_icon(icon_path)
-
-from Theme_NeoDark import theme
-dpg.bind_theme(theme)
 
 class MainWin:
     def __init__(self):
         self.winID = "main_win"
+        self.zone_contenu = "Contenue_main_win"
 
-        self.gestionnaire_windows = GestionWindow()
+        self.gestionnaire_windows = GestionWindow(self.zone_contenu)
         self.gestionnaire_windows.nouvelle_window("Accueil", AccueilWindow())
 
         self.fait_naitre_main_window()
@@ -59,6 +51,9 @@ class MainWin:
                     dpg.add_menu_item(label="Show Metrics", callback=lambda: dpg.show_tool(dpg.mvTool_Metrics))
                     dpg.add_menu_item(label="Toggle Fullscreen", callback=lambda: dpg.toggle_viewport_fullscreen())
 
+            with dpg.child_window(tag=self.zone_contenu, border=False):
+                pass
+
             # Ajustement theme
             with dpg.theme() as mainwin_theme:
                 with dpg.theme_component(dpg.mvAll):
@@ -67,11 +62,13 @@ class MainWin:
 
 
 class GestionWindow:
-    def __init__(self):
+    def __init__(self, parent_id):
+        self.parent = parent_id
         self.window_courante = None
         self.windows = {}
 
     def nouvelle_window(self, nom:str, window):
+        window.parent_id = self.parent
         self.windows[nom] = window
 
     def afficher_window(self, nom:str):
@@ -93,37 +90,66 @@ class BebeWindow:
     def __init__(self, window_id):
         self.winID = window_id
         self.vivante = False
+        self.parent_id = None
 
-        def cree(self):
-            if not self.vivante:
-                self.naissance()
-                self.vivante = True
+    def cree(self):
+         if not self.vivante:
+            self._naissance()
+            self.vivante = True
 
-        def _naissance(self):
-            pass
+    def _naissance(self):
+        pass
 
 class AccueilWindow(BebeWindow):
     def __init__(self):
         super().__init__("Accueil")
 
     def _naissance(self):
-        with dpg.window(tag=self.winID, label="Accueil"):
-            dpg.add_text("Accueil")
+        with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
+            dpg.add_text("Bienvenue dans Nomos !")
+            dpg.add_separator()
+
+            with dpg.group(horizontal=True):
+                with dpg.child_window(width=300, height=200):
+                    dpg.add_text("Actions rapides")
+                    dpg.add_separator()
+                    dpg.add_button(label="Nouvelle écoute", width=-1)
+                    dpg.add_button(label="Voir statistiques", width=-1)
+                    dpg.add_button(label="Configuration", width=-1)
+
+                dpg.add_spacer(width=20)
+
+                with dpg.child_window(width=-1, height=200):
+                    dpg.add_text("Informations")
+                    dpg.add_separator()
+                    dpg.add_text("Dernière écoute : Aucune")
+                    dpg.add_text("Sessions totales : 0")
+                    dpg.add_text("Temps total : 0h 0m")
 
 
 def main():
     dpg.create_context()
 
+    try:
+        from Theme_NeoDark import theme
+        dpg.bind_theme(theme)
+    except ImportError:
+        print("Theme_NeoDark non trouvé, utilisation du thème par défaut")
+
     main_win = MainWin()
 
     dpg.create_viewport(title='Nomos', width=1280, height=720)
+
+    icon_path = "ressources/Nomos.ico"
+    if os.path.exists(icon_path):
+        dpg.set_viewport_small_icon(icon_path)
+        dpg.set_viewport_large_icon(icon_path)
+
     dpg.setup_dearpygui()
+    dpg.create_viewport(title='Nomos', width=1280, height=720)
     dpg.set_primary_window(main_win.winID, True)
 
     main_win.gestionnaire_windows.afficher_window("Accueil")
-
-    while dpg.is_dearpygui_running():
-        dpg.render_dearpygui_frame()
 
     dpg.show_viewport()
     dpg.start_dearpygui()
