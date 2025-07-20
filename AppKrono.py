@@ -27,7 +27,7 @@ class AppKrono:
             - Base de données (Instance de `GestionSQL`)
             - Logger
         """
-        self.identifiant_session = int(datetime.now().timestamp())
+        self.identifiant_session = None
         self.en_enregistrement = False
         self.touches_enfoncees = set()
         self.appui_touche_queue = queue.Queue()
@@ -64,8 +64,7 @@ class AppKrono:
         except Exception as e:
             self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
 
-        self.setup_session("Session test3 game", "")
-        self.faire_mapping()
+        self.doit_etre_mapper()
         return
 
     def __str__(self) -> str:
@@ -88,7 +87,7 @@ class AppKrono:
         Gère la fin des différents champs qui ont besoin de traitement de fin:
             - self.logger
             - self.bd
-        Returns:
+        Returns:+
             None
         """
         try:
@@ -171,8 +170,8 @@ class AppKrono:
             ['²', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ')', '=', 'Retour'],
             ['Tab', 'a', 'z', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '^', '$', 'Entrer'],
             ['Verr.maj', 'q', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'ù', '*'],
-            ['Shift', '<', 'w', 'x', 'c', 'v', 'b', 'n', ',', ';', ':', '!', 'Shift'],
-            ['Ctrl', 'Win', 'Alt', 'Space', 'AltGr', 'Menu', 'Ctrl'],
+            ['Shift', '<', 'w', 'x', 'c', 'v', 'b', 'n', ',', ';', ':', '!', 'ShiftG'],
+            ['Ctrl', 'Win', 'Alt', 'Space', 'AltGr', 'Menu'],
             ['Haut', 'Bas', 'Gauche', 'Droite']
         ]
 
@@ -211,6 +210,7 @@ class AppKrono:
         if not result:
             return True
         else:
+            self.mapping = {t[0]: list(t[1:]) for t in result}
             return False
 
     def faire_mapping(self) -> None:
@@ -251,7 +251,7 @@ class AppKrono:
         except Exception as e:
             self.logger.error(f"Problème horaire fin : {e}.")
 
-    def start(self) -> None:
+    def start(self, info_session:str, jeu_session:str) -> None:
         """
         Lance un thread pour enregister toutes les deux secondes.
         Lance l’écoute des touches du clavier.\n
@@ -259,7 +259,9 @@ class AppKrono:
         Returns:
             None
         """
-        self.logger.info("Start de AppKrono.")
+        self.logger.info("Début écoute.")
+        self.identifiant_session = int(datetime.now().timestamp())
+        self.setup_session(info_session, jeu_session)
         self.en_enregistrement = True
         ecoute_thread = threading.Thread(target=self.faire_commit_periodique)
         ecoute_thread.daemon = True

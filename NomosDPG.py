@@ -2,6 +2,8 @@ import ctypes
 import dearpygui.dearpygui as dpg
 import os
 
+from AppKrono import AppKrono
+
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 
@@ -12,6 +14,7 @@ class MainWin:
 
         self.gestionnaire_windows = GestionWindow(self.zone_contenu)
         self.gestionnaire_windows.nouvelle_window("Accueil", AccueilWindow())
+        self.gestionnaire_windows.nouvelle_window("Ecoute", EcouteWindow())
 
         self.fait_naitre_main_window()
         return
@@ -30,7 +33,7 @@ class MainWin:
                     dpg.add_menu_item(label="Quitter", callback=lambda: dpg.stop_dearpygui())
 
                 with dpg.menu(label="Ecoute"):
-                    dpg.add_menu_item(label="Faire une écoute")
+                    dpg.add_menu_item(label="Faire une écoute", callback=lambda: self.gestionnaire_windows.afficher_window("Ecoute"))
 
                 with dpg.menu(label="Stats"):
                     dpg.add_menu_item(label="Statistique")
@@ -85,6 +88,8 @@ class GestionWindow:
 
         if not dpg.does_item_exist(actuel.winID):
             actuel.cree()
+        else:
+            actuel.actualiser_donnees()
 
         dpg.show_item(actuel.winID)
         self.window_courante = actuel.winID
@@ -95,6 +100,7 @@ class BebeWindow:
         self.winID = window_id
         self.vivante = False
         self.parent_id = None
+        self.data = {}
         return
 
     def cree(self):
@@ -104,6 +110,9 @@ class BebeWindow:
          return
 
     def _naissance(self):
+        pass
+
+    def actualiser_donnees(self):
         pass
 
 class AccueilWindow(BebeWindow):
@@ -120,7 +129,8 @@ class AccueilWindow(BebeWindow):
                 with dpg.child_window(width=300, height=200):
                     dpg.add_text("Actions rapides")
                     dpg.add_separator()
-                    dpg.add_button(label="Nouvelle écoute", width=-1)
+                    dpg.add_button(label="Faire une écoute", width=-1,
+                                   callback=lambda: main_win.gestionnaire_windows.afficher_window("Ecoute"))
                     dpg.add_button(label="Voir statistiques", width=-1)
                     dpg.add_button(label="Configuration", width=-1)
 
@@ -134,6 +144,115 @@ class AccueilWindow(BebeWindow):
                     dpg.add_text("Temps total : 0h 0m")
         return
 
+class EcouteWindow(BebeWindow):
+    def __init__(self):
+        super().__init__("Ecoute")
+        return
+    
+    def _naissance(self):
+        self.set_donnees()
+        with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
+            dpg.add_text("Enregistrement des touches")
+            dpg.add_separator()
+
+            with dpg.group(horizontal=True):
+                with dpg.child_window(width=300, height=250):
+                    dpg.add_text("Démarer une écoute")
+                    dpg.add_separator()
+                    dpg.add_button(label="Nouvelle écoute", width=-1, callback=lambda: self.start_ecoute())
+                    dpg.add_text("Nom session")
+                    dpg.add_input_text(width=-1, tag="champ_nom")
+                    dpg.add_text("Jeu")
+                    dpg.add_combo(width=-1, items=self.data["liste_jeu"], tag="champ_jeu")
+
+                dpg.add_spacer(width=20)
+
+                with dpg.child_window(width=-1, height=200):
+                    dpg.add_text("Créer un nouveau jeu")
+                    dpg.add_separator()
+                    with dpg.group(horizontal=True):
+                        for elem in [("Nom", False, "champ_jeu1"), ("Description", False, "champ_jeu2"),
+                                     ("T1", True, "champ_jeu3"), ("T2", True, "champ_jeu4"),
+                                     ("T3", True, "champ_jeu5"), ("T4", True, "champ_jeu6")]:
+                            with dpg.group():
+                                dpg.add_text(elem[0])
+                                if elem[1]:
+                                    dpg.add_combo(fit_width=True, tag=elem[2],
+                                                  items=sorted(list(self.data["dict_rep_code"].keys())))
+                                else:
+                                    dpg.add_input_text(width=200, tag=elem[2])
+                        with dpg.group():
+                            dpg.add_spacer(height=30)
+                            dpg.add_button(label="Créer", callback=lambda: self.valider_nouveau_jeu())
+
+            dpg.add_spacer(height=10)
+            dpg.add_text(f"Nombre total d'écoute faite:  {len(self.data["ecoute_session_table"])}")
+            dpg.add_separator()
+            with dpg.table(header_row=True, no_host_extendX=True, context_menu_in_body=True,
+                           row_background=True, policy=dpg.mvTable_SizingStretchSame,scrollY=True,
+                           clipper=True, height=-1, resizable=True, delay_search=True, borders_outerH=True,
+                           borders_innerV=True, borders_outerV=True):
+                
+                dpg.add_table_column(label="Nom")
+                dpg.add_table_column(label="Date")
+                dpg.add_table_column(label="Durée")
+                dpg.add_table_column(label="Jeu")
+                
+                for i in self.data["ecoute_session_table"]:
+                    with dpg.table_row():
+                        dpg.add_text(f"{i[0]}")
+                        dpg.add_text(f"{i[1]}")
+                        dpg.add_text(f"{i[2]-i[1]}")
+                        dpg.add_text(f"{i[3]}")
+
+    def set_donnees(self):
+        self.data["ecoute_session_table"] = krono.bd.select_ecoute_session()
+        self.data["dict_rep_code"] = {v: k for k, v in {cle: valeur[0] for cle, valeur in krono.mapping.items()}.items()}
+        self.data["liste_jeu"] = [s[0] for s in krono.bd.select_list_jeu()]
+        return
+
+    def actualiser_donnees(self):
+        self.set_donnees()
+        if dpg.does_item_exist(self.winID):
+            dpg.delete_item(self.winID)
+
+        self.vivante = False
+        self.cree()
+
+        return
+
+    def valider_nouveau_jeu(self):
+        val1 = dpg.get_value("champ_jeu1")
+        val2 = dpg.get_value("champ_jeu2")
+        val3 = self.data["dict_rep_code"][dpg.get_value("champ_jeu3")]
+        val4 = self.data["dict_rep_code"][dpg.get_value("champ_jeu4")]
+        val5 = self.data["dict_rep_code"][dpg.get_value("champ_jeu5")]
+        val6 = self.data["dict_rep_code"][dpg.get_value("champ_jeu6")]
+        ajout = krono.bd.ajout_jeu(val1, val2, val3, val4, val5, val6)
+        if ajout:
+            with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag="popup_success",
+                            pos=(dpg.get_viewport_client_width()//2-150, dpg.get_viewport_client_height()//2-75)):
+                dpg.add_text("Jeu ajouté avec succès")
+                dpg.add_spacer(height=10)
+                dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("popup_success"))
+
+        self.actualiser_donnees()
+        return
+
+    def start_ecoute(self):
+        valjeu = dpg.get_value("champ_jeu")
+        valnom = dpg.get_value("champ_nom")
+        krono.start(valnom, valjeu)
+
+        with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag="popup_ecoute",
+                        pos=(dpg.get_viewport_client_width() // 2 - 150, dpg.get_viewport_client_height() // 2 - 75)):
+            dpg.add_text("Fin de la session")
+            dpg.add_spacer(height=10)
+            dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("popup_ecoute"))
+
+        self.actualiser_donnees()
+        return
+
 
 def main():
     dpg.create_context()
@@ -144,6 +263,7 @@ def main():
     except Exception as e:
         print(f"Theme_NeoDark non trouvé, utilisation du thème par défaut {e}")
 
+    global main_win
     main_win = MainWin()
 
     dpg.create_viewport(title='Nomos', width=1280, height=720)
@@ -154,7 +274,6 @@ def main():
         dpg.set_viewport_large_icon(icon_path)
 
     dpg.setup_dearpygui()
-    dpg.create_viewport(title='Nomos', width=1280, height=720)
     dpg.set_primary_window(main_win.winID, True)
 
     main_win.gestionnaire_windows.afficher_window("Accueil")
@@ -164,4 +283,6 @@ def main():
     dpg.destroy_context()
 
 if __name__ == "__main__":
+    global krono
+    krono = AppKrono()
     main()

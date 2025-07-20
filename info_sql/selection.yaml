@@ -18,3 +18,13 @@ selection_clavier_2d: |
   FROM frappe f JOIN touche t 
   WHERE f.code = t.code AND f.id_session = ? 
   GROUP BY f.code
+
+selection_table_ecoute_session: |
+  SELECT info, id_session, fin, id_jeu 
+  FROM session
+  ORDER BY id_session DESC
+
+selection_liste_jeu: |
+  SELECT nom
+  FROM jeu
+  ORDER BY nom

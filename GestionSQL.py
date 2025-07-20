@@ -5,7 +5,6 @@ from typing import Optional
 import yaml
 import logging
 import os
-from datetime import datetime
 
 from AnalyseEnregistrement import Enregistrement
 from Flushhandler import FlushableRotatingFileHandler
@@ -132,43 +131,58 @@ class GestionSqlite:
         """
         return self.ouvert
 
-    def ajout_jeu(self, nom: str, description: str, favori: bool, touche1: str, touche2: str, touche3: str,
-                  touche4: str) -> None:
+    def ajout_jeu(self, nom: str, description: str, touche1: int, touche2: int, touche3: int,touche4: int) -> bool:
         """
         Ajoute le jeu dans la table jeu.\n
         Notifications dans le logger.
         Args:
             nom (str): Nom du jeu
             description (str): Description du jeu
-            favori (bool): si le jeu est favori ou non favori
-            touche1 (str): Nom du touche1
-            touche2 (str): Nom du touche2
-            touche3 (str): Nom du touche3
-            touche4 (str): Nom du touche4
+            touche1 (int): Nom du touche1
+            touche2 (int): Nom du touche2
+            touche3 (int): Nom du touche3
+            touche4 (int): Nom du touche4
 
         Returns:
             None
         """
         if not self.est_ouvert():
             self.logger.error("Tentative d'ajout sur une connexion fermée")
-            return
+            return False
 
         with self.lock:
             try:
                 if description == "" or description is None:
                     self.cursor.execute(
                         self.commande_insert["insertions_jeu_sans_descr"],
-                        (nom, favori, touche1, touche2, touche3, touche4))
+                        (nom, touche1, touche2, touche3, touche4))
                 else:
                     self.cursor.execute(
                         self.commande_insert["insertions_jeu_descr"],
-                        (nom, description, favori, touche1, touche2, touche3, touche4))
+                        (nom, description, touche1, touche2, touche3, touche4))
                 self.connection.commit()
                 self.logger.info("Insertion d'un nouveau jeu faite.")
+                return True
             except Exception as e:
                 self.logger.error(f"Erreur {e} pour un nouveau jeu")
                 self.connection.rollback()
-        return
+        return False
+
+    def select_list_jeu(self) -> list:
+        if not self.est_ouvert():
+            self.logger.error("Tentative de sélection sur une connexion fermée")
+            return []
+
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select[f"selection_liste_jeu"]
+                )
+                res = self.cursor.fetchall()
+                return res
+            except Exception as e:
+                self.logger.error(f"Erreur {e} pour la selection dans la table jeu")
+        return []
 
     def select_all(self, nom: str) -> Optional[list]:
         """
@@ -446,6 +460,28 @@ class GestionSqlite:
             except Exception as e:
                 self.logger.error(f"Erreur lors de la selection de data_enregistrement : {e}")
         return []
+    
+    def select_ecoute_session(self) -> list:
+        """Donne les informations pour la table qui affiches les session dans la fenêtre d'écoute.
+
+        Returns:
+            list: List des tuple de la tables des sessions
+        """
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            return []
+
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select["selection_table_ecoute_session"]
+                )
+                res = self.cursor.fetchall()
+                self.logger.info(f"Selection avec succes dans session")
+                return res
+            except Exception as e:
+                self.logger.error(f"Erreur lors de la selection dans session: {e}")
+        return []
 
     def test(self):
         """
@@ -467,39 +503,41 @@ class GestionSqlite:
                 return None
 
 
-if __name__ == "__main__":
-    gestSQL = None
-    try:
-        gestSQL = GestionSqlite("mesures.db")
-        print(gestSQL)
-
-        print("=== Test jeu")
-        gestSQL.ajout_jeu("lol", "", True, "a", "z", "e", "r")
-        print(gestSQL.select_all("jeu"))
-        gestSQL.delete_all("jeu")
-        print(gestSQL.select_all("jeu"))
-
-        print("=== Test touche")
-        gestSQL.insertion_touche([(10, "a", 1, 1), (20, "b", 2, 2), (30, "c", 3, 3)])
-        print(gestSQL.select_all("touche"))
-
-        print("=== Test frappe")
-        gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 25, 10), (int(datetime.now().timestamp()), 25, 10),
-                                  (int(datetime.now().timestamp()), 25, 30)])
-        gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 26, 50), (int(datetime.now().timestamp()), 26, 10),
-                                  (int(datetime.now().timestamp()), 26, 10)])
-
-        print(gestSQL.test())
-
-        print(gestSQL.select_all("frappe"))
-        gestSQL.delete_all("frappe")
-        print(gestSQL.select_all("frappe"))
-        gestSQL.delete_all("touche")
-        print(gestSQL.select_all("touche"))
-        gestSQL.fin()
-
-    except Exception as e:
-        print(f"Erreur dans le programme principal : {e}")
-    finally:
-        if gestSQL:
-            gestSQL.fin()
+# if __name__ == "__main__":
+#     gestSQL = None
+#     try:
+#         gestSQL = GestionSqlite("mesures.db")
+#         print(gestSQL)
+#
+#         print("=== Test jeu")
+#         gestSQL.ajout_jeu("lol", "", 2, 3, 4, 5)
+#         print(gestSQL.select_all("jeu"))
+#         gestSQL.delete_all("jeu")
+#         print(gestSQL.select_all("jeu"))
+#
+#         print("=== Test touche")
+#         gestSQL.insertion_touche([(10, "a", 1, 1), (20, "b", 2, 2), (30, "c", 3, 3)])
+#         print(gestSQL.select_all("touche"))
+#
+#         print("=== Test frappe")
+#         gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 25, 10), (int(datetime.now().timestamp()), 25, 10),
+#                                   (int(datetime.now().timestamp()), 25, 30)])
+#         gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 26, 50), (int(datetime.now().timestamp()), 26, 10),
+#                                   (int(datetime.now().timestamp()), 26, 10)])
+#
+#         print(gestSQL.test())
+#
+#         print(gestSQL.select_ecoute_session())
+#
+#         print(gestSQL.select_all("frappe"))
+#         gestSQL.delete_all("frappe")
+#         print(gestSQL.select_all("frappe"))
+#         gestSQL.delete_all("touche")
+#         print(gestSQL.select_all("touche"))
+#         gestSQL.fin()
+#
+#     except Exception as e:
+#         print(f"Erreur dans le programme principal : {e}")
+#     finally:
+#         if gestSQL:
+#             gestSQL.fin()
