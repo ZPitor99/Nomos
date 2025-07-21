@@ -106,7 +106,7 @@ class AppKrono:
         """
         Methode lancé à l’appui d’une touche. Ajoute les informations de la touche appuyée à appui_touche_queue.\n
         Enregistre :\n
-        - l’horodatage de la touche au format UNIX
+        - l’horodatage de la touche au retour UNIX
         - id de session
         - le code de la touche
         Args:
