@@ -2,6 +2,7 @@ import ctypes
 import dearpygui.dearpygui as dpg
 import os
 import datetime
+from typing import Union
 
 from AppKrono import AppKrono
 
@@ -119,11 +120,24 @@ class BebeWindow:
         pass
 
 class AccueilWindow(BebeWindow):
-    def __init__(self):
+    """
+    Class de la fenêtre d’accueil de l'interface.
+    """
+    def __init__(self) -> None:
+        """
+        Création de l'instance
+        """
         super().__init__("Accueil")
         return
 
-    def _naissance(self):
+    def _naissance(self) -> None:
+        """
+        Définit les éléments de la fenêtre AccueilWindow.
+            - Actions rapides
+            - Résumer des sessions déjà présentes
+        Returns:
+            None
+        """
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
             dpg.add_text("Bienvenue dans Nomos !")
             dpg.add_separator()
@@ -148,11 +162,26 @@ class AccueilWindow(BebeWindow):
         return
 
 class EcouteWindow(BebeWindow):
+    """
+    Class de la fenêtre dearpygui pour gérer les écoutes.
+    """
     def __init__(self):
+        """
+        Création de l’instance.
+        """
         super().__init__("Ecoute")
         return
     
-    def _naissance(self):
+    def _naissance(self) -> None:
+        """
+        Définit les élements de la fenêtre EcouteWindow.\n
+            - Lancer une écoute avec paramétrage.
+            - Ajouter un nouveau jeu
+            - Visualizer les sessions faites.
+
+        Returns:
+            None
+        """
         self.set_donnees()
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
             dpg.add_text("Enregistrement des touches")
@@ -160,7 +189,7 @@ class EcouteWindow(BebeWindow):
 
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=300, height=250):
-                    dpg.add_text("Démarer une écoute")
+                    dpg.add_text("Lancer une écoute")
                     dpg.add_separator()
                     dpg.add_button(label="Nouvelle écoute", width=-1, callback=lambda: self.start_ecoute())
                     dpg.add_text("Nom session")
@@ -207,13 +236,25 @@ class EcouteWindow(BebeWindow):
                         dpg.add_text(unix_to_time(i[2]-i[1]))
                         dpg.add_text(f"{i[3]}")
 
-    def set_donnees(self):
+    def set_donnees(self) -> None:
+        """
+        Applique au champ `self.data` les données que la fenêtre doit afficher.
+        Appeler la méthode quand un changement de données est fait pour mettre à jour les données en mémoire.
+        Returns:
+            None
+        """
         self.data["ecoute_session_table"] = krono.bd.select_ecoute_session()
         self.data["dict_rep_code"] = {v: k for k, v in {cle: valeur[0] for cle, valeur in krono.mapping.items()}.items()}
         self.data["liste_jeu"] = [s[0] for s in krono.bd.select_list_jeu()]
         return
 
-    def actualiser_donnees(self):
+    def actualiser_donnees(self) -> None:
+        """
+        Fait l’actualisation des données visuellement, c’est-à-dire détruit la fenêtre et l'affiche de nouveau avec
+        les données en mémoire.
+        Returns:
+            None
+        """
         self.set_donnees()
         if dpg.does_item_exist(self.winID):
             dpg.delete_item(self.winID)
@@ -223,7 +264,13 @@ class EcouteWindow(BebeWindow):
 
         return
 
-    def valider_nouveau_jeu(self):
+    def valider_nouveau_jeu(self) -> None:
+        """
+        Méthode pour valider la création d’un nouveau jeu. Récupère les données des champs dpg necessaire pour la création
+        et envoie les données pour faire l'ajout. Puis actualise la fenêtre.
+        Returns:
+            None
+        """
         val1 = dpg.get_value("champ_jeu1")
         val2 = dpg.get_value("champ_jeu2")
         val3 = self.data["dict_rep_code"][dpg.get_value("champ_jeu3")]
@@ -241,7 +288,12 @@ class EcouteWindow(BebeWindow):
         self.actualiser_donnees()
         return
 
-    def start_ecoute(self):
+    def start_ecoute(self) -> None:
+        """
+        Lance l'écoute des frappes pour l'enregistrement. Affiche un message de fin pour informer de la fin de l'enregistrement.
+        Returns:
+            None
+        """
         valjeu = dpg.get_value("champ_jeu")
         valnom = dpg.get_value("champ_nom")
         krono.start(valnom, valjeu)
@@ -256,11 +308,25 @@ class EcouteWindow(BebeWindow):
         return
     
 class Clavier2DWindow(BebeWindow):
-    def __init__(self):
+    """
+    Class pour visualiser sur un clavier généré le nombre d’appuis par touche par coloration de ce dernier.
+    """
+    def __init__(self) -> None:
+        """
+        Création de l’instance.
+        """
         super().__init__("Clavier2D")
         return
     
-    def _naissance(self):
+    def _naissance(self) -> None:
+        """
+        Définit les éléments de la fenêtre Clavier2DWindow.\n
+            - Légende du nombre d’appuis mit en correspondance de la couleur.
+            - Clavier 2D coloré en fonction du nombre d’appuis de la session choisie.
+            - Choix de la session dont on veut visualiser les nombres d’appuis.
+        Returns:
+            None
+        """
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
             #get_colormap_color(colormap_id, index)
             dpg.add_text("Clavier 2D des appuis")
@@ -271,16 +337,16 @@ class Clavier2DWindow(BebeWindow):
             dpg.bind_colormap(dpg.last_item(), dpg.mvPlotColormap_Hot)
 
 
-def unix_to_time(horaire:int = 0, retour: bool = True) -> str | tuple[int, int, int]:
+def unix_to_time(horaire:int = 0, retour: bool = True) -> Union[str, tuple[int, int, int]]:
     """
-    Transforme une durée au format unix en chaine de character ou en un tuple d’entier correspondant aux heures, minutes
-    secondes de l’horaire
+    Transforme une durée au format Unix en chaine de character ou en un tuple d’entier correspondant aux heures, minutes
+    secondes de l’horaire.
     Args :
-        horaire (int) : Une durée au format unix
-        retour (bool) : True pour une chaine de character, false pour un tuple d’entier
+        horaire (int) : Une durée au format Unix.
+        retour (bool) : True pour une chaine de character, false pour un tuple d’entier.
 
     Returns :
-        La durée sous le format en fonction du paramètre retour
+        La durée sous le format en fonction du paramètre retour.
 
     """
     heure = horaire // 3600
@@ -300,7 +366,17 @@ def unix_to_time(horaire:int = 0, retour: bool = True) -> str | tuple[int, int, 
         return heure, mini, sec
 
 
-def unix_to_date(horaire:int = 0, retour: bool = True) -> str | datetime:
+def unix_to_date(horaire:int = 0, retour: bool = True) -> Union[str, datetime]:
+    """
+    Transforme un horaire au format Unix au format Jour/Mois/Année Heure:Minutes:Seconde en chaine de character ou
+    au format datetime.
+    Args :
+        horaire (int) : L’horodatage au format Unix.
+        retour (bool) : True pour la chaine de character, False pour le format datetime.
+
+    Returns :
+        L’horodatage sous le format en fonction du paramètre retour.
+    """
     if retour:
         return datetime.datetime.fromtimestamp(horaire).strftime("%d/%m/%Y %H:%M:%S")
     else:
