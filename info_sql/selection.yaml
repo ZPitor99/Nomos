@@ -28,3 +28,9 @@ selection_liste_jeu: |
   SELECT nom
   FROM jeu
   ORDER BY nom
+
+selection_clavier2d: |
+  SELECT COUNT(*) nb_f, frappe.code, representation, x, y
+  FROM frappe, touche
+  WHERE frappe.code = touche.code AND id_session = ?
+  GROUP BY frappe.code

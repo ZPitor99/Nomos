@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 from logging.handlers import RotatingFileHandler
-from typing import Optional
+from typing import Optional, Any
 import yaml
 import logging
 import os
@@ -15,7 +15,7 @@ class GestionSqlite:
     Class GestionSqlite permet de gérer les transactions avec la base de données en paramètre (path de la base) lors de sa création.
     Dois être de schéma spécifié dans `__init__'.\n
     Etablie une connection sécurisée, travail de logging et fermeture propre avec nettoyage.\n
-    Utilise les instructions sql présent dans le répertoire `info_sql` qui sont en adéquation avec le schéma de la base.
+    Utilise les commandes sql présentes dans le répertoire `info_sql` qui sont en adéquation avec le schéma de la base.
     """
 
     def __init__(self, nom_db: str, logger: Optional[logging.Logger] = None) -> None:
@@ -23,8 +23,8 @@ class GestionSqlite:
         Constructeur de la classe GestionSqlite. Utilise la base de donnée en paramètre, mais doit être de schéma
         tel que spécifier dans bd1.pdf de type sqlite3.db.\n
         Args:
-            nom_db (str): Nom de la base de donnée à laquelle se connecter
-            logger (logging.Logger): Non du logger si logger partagé est souhaité
+            nom_db (str): Nom de la base de donnée à laquelle se connecter.
+            logger (logging.Logger): Non du logger si logger partagé est souhaité.
         """
         self.nom_db = nom_db
         self.connection = None
@@ -98,7 +98,7 @@ class GestionSqlite:
         """
         Donne la liste des elements de la base de données : tables, index…
         Returns:
-            str: La représentation en chaine de character de la liste des éléments de la bd
+            str: La représentation en chaine de character de la liste des éléments de la bd.
         """
         if not self.est_ouvert():
             return "Connexion fermée"
@@ -113,6 +113,11 @@ class GestionSqlite:
             return f"Erreur : {e}"
 
     def __del__(self):
+        """
+        Applique self.fin().
+        Returns:
+            None
+        """
         self.fin()
         return
 
@@ -120,6 +125,11 @@ class GestionSqlite:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Applique self.fin().
+        Returns:
+            None
+        """
         self.fin()
         return False
 
@@ -134,14 +144,15 @@ class GestionSqlite:
     def ajout_jeu(self, nom: str, description: str, touche1: int, touche2: int, touche3: int,touche4: int) -> bool:
         """
         Ajoute le jeu dans la table jeu.\n
+        Renvoie True si l'action, c’est bien déroulée, False sinon.\n
         Notifications dans le logger.
         Args:
-            nom (str): Nom du jeu
-            description (str): Description du jeu
-            touche1 (int): Nom du touche1
-            touche2 (int): Nom du touche2
-            touche3 (int): Nom du touche3
-            touche4 (int): Nom du touche4
+            nom (str): Nom du jeu.
+            description (str): Description du jeu.
+            touche1 (int): Nom du touche1.
+            touche2 (int): Nom du touche2.
+            touche3 (int): Nom du touche3.
+            touche4 (int): Nom du touche4.
 
         Returns:
             None
@@ -169,6 +180,12 @@ class GestionSqlite:
         return False
 
     def select_list_jeu(self) -> list:
+        """
+        Donne la liste des noms de jeu présent dans la table jeu.\n
+        Notifications dans le logger.
+        Returns:
+            list: La liste des noms de jeu.
+        """
         if not self.est_ouvert():
             self.logger.error("Tentative de sélection sur une connexion fermée")
             return []
@@ -189,10 +206,10 @@ class GestionSqlite:
         Selection de tous les éléments de la table donnée en paramètre et la renvoie.\n
         Notifications dans le logger.
         Args:
-            nom (str) : Le nom de la table
+            nom (str): Le nom de la table.
 
         Returns:
-            Optional[list] : Une liste si la table n'est pas vide, None sinon
+            Optional[list]: Une liste si la table n'est pas vide, None sinon.
         """
         if not self.est_ouvert():
             self.logger.error("Tentative de sélection sur une connexion fermée")
@@ -266,6 +283,7 @@ class GestionSqlite:
         """
         Applique le nettoyage de la bd et met fin a la connection.\n
         Notifications dans le logger.
+        Ferme le logger pour finir.
         Returns:
             None
         """
@@ -350,10 +368,10 @@ class GestionSqlite:
 
     def insertion_frappe(self, frappes: list[tuple[int, int, int]]) -> None:
         """
-        Insert les paramètre comme un tuple dans la table frappe.
-        Notifications dans le logger.\n
+        Insert les paramètre comme un tuple dans la table frappe.\n
+        Notifications dans le logger.
         Args:
-            frappes (list): List de tuple contenant les frappes à insérer
+            frappes (list): List de tuple contenant les frappes à insérer.
 
         Returns:
             None
@@ -381,6 +399,17 @@ class GestionSqlite:
         return
 
     def insertion_session(self, id_session: int, info_session:str, jeu:str ) -> None:
+        """
+        Insert les informations minimum pour créer une session.\n
+        Notifications dans le logger.
+        Args:
+            id_session(int): l'identifiant de la session.
+            info_session(str): le nom de la session.
+            jeu(str): le jeu associé à la session.
+
+        Returns:
+            None
+        """
         if not self.est_ouvert():
             self.logger.error("Tentative d'insertion sur une connexion fermée")
             return
@@ -399,6 +428,16 @@ class GestionSqlite:
         return
 
     def modification_fin_session(self, horaire:int, session_courante:int) -> None:
+        """
+        Modifie la session courante pour donner des informations suite à la fin de cette dernière.\n
+        Notifications dans le logger.
+        Args:
+            horaire(int): L'horaire unix de fin de la session courante.
+            session_courante(int): id de la session courante.
+
+        Returns:
+
+        """
         if not self.est_ouvert():
             self.logger.error("Tentative de modification sur une connexion fermée")
             return
@@ -417,6 +456,15 @@ class GestionSqlite:
         return
 
     def enregistrement_mapping(self, mapping:dict[int:list]) -> None:
+        """
+        Rentre dans la table touche le mapping fait pas l'utilisateur.\n
+        Notifications dans le logger.
+        Args:
+            mapping(dict): Dictionnaire du mapping produit par l'utilisateur.
+
+        Returns:
+            None
+        """
         if not self.est_ouvert():
             self.logger.error("Tentative d'insertion sur une connexion fermée")
             return
@@ -439,6 +487,14 @@ class GestionSqlite:
         return
 
     def data_enregistrement(self, id_session:int) -> list[Enregistrement]:
+        """
+        data des frappes join de la représentation correspondante.
+        Args:
+            id_session: id de la session demandée
+
+        Returns:
+            list: Liste d’enregistrement
+        """
         if not self.est_ouvert():
             self.logger.error("Tentative de selection sur une connexion fermée")
             return []
@@ -461,14 +517,14 @@ class GestionSqlite:
                 self.logger.error(f"Erreur lors de la selection de data_enregistrement : {e}")
         return []
     
-    def select_ecoute_session(self) -> list:
-        """Donne les informations pour la table qui affiches les session dans la fenêtre d'écoute.
+    def select_ecoute_session(self) -> list[Any] | None:
+        """Donne les informations pour la table qui affiche les sessions dans la fenêtre d’écoute.
 
         Returns:
-            list: List des tuple de la tables des sessions
+            list: List des tuples de la table des sessions
         """
         if not self.est_ouvert():
-            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            self.logger.error("Tentative de selection sur une connexion fermée")
             return []
 
         with self.lock:
@@ -481,6 +537,31 @@ class GestionSqlite:
                 return res
             except Exception as e:
                 self.logger.error(f"Erreur lors de la selection dans session: {e}")
+        return []
+
+    def selection_clavier2d(self, id_session:int) -> list[Any] | None:
+        """
+        Donne les résultats de la requête pour les frappes par touches lors de la session en paramètre.
+        Args:
+            id_session(int): id de la session demandée.
+
+        Returns:
+            list: List des tuples pour la représentation du clavier 2d nombre d’appuis
+        """
+        if not self.est_ouvert():
+            self.logger.error("Tentative de selection sur une connexion fermée")
+            return []
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select["selection_clavier2d"],
+                    (id_session,),
+                )
+                res = self.cursor.fetchall()
+                self.logger.info(f"Selection avec succes dans session")
+                return res
+            except Exception as e:
+                self.logger.error(f"Erreur lors de la selection pour clavier 2D: {e}")
         return []
 
     def test(self):
