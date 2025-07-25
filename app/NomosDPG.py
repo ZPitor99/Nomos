@@ -4,21 +4,68 @@ import os
 import datetime
 from typing import Union
 
-from AppKrono import AppKrono
-
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 
+class NomosDPG:
+    """
+    Classe principale de l'interface graphique Nomos utilisant DearPyGUI.
+    """
+
+    def __init__(self, krono_instance, project_root=None):
+        """
+        Initialise l'application avec une instance de AppKrono.
+
+        Args:
+            krono_instance: Instance de la classe AppKrono
+            project_root: Chemin vers la racine du projet (optionnel)
+        """
+        self.krono = krono_instance
+        self.main_win = None
+        self.project_root = project_root or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def run(self):
+        """
+        Lance l'application graphique.
+        """
+        dpg.create_context()
+
+        try:
+            from Theme_NeoDark import theme
+            dpg.bind_theme(theme)
+        except Exception as e:
+            print(f"Theme_NeoDark non trouvé, utilisation du thème par défaut {e}")
+
+        self.main_win = MainWin(self.krono)
+
+        dpg.create_viewport(title='Nomos', width=1280, height=720)
+
+        # Chemin vers l'icône (relatif à la racine du projet)
+        icon_path = os.path.join(self.project_root, "ressources", "Nomos.ico")
+        if os.path.exists(icon_path):
+            dpg.set_viewport_small_icon(icon_path)
+            dpg.set_viewport_large_icon(icon_path)
+
+        dpg.setup_dearpygui()
+        dpg.set_primary_window(self.main_win.winID, True)
+
+        self.main_win.gestionnaire_windows.afficher_window("Accueil")
+
+        dpg.show_viewport()
+        dpg.start_dearpygui()
+        dpg.destroy_context()
+
+
 class MainWin:
-    def __init__(self):
+    def __init__(self, krono_instance):
+        self.krono = krono_instance
         self.winID = "main_win"
         self.zone_contenu = "Contenue_main_win"
 
         self.gestionnaire_windows = GestionWindow(self.zone_contenu)
-        self.gestionnaire_windows.nouvelle_window("Accueil", AccueilWindow())
-        self.gestionnaire_windows.nouvelle_window("Ecoute", EcouteWindow())
-
-        self.gestionnaire_windows.nouvelle_window("Clavier2D", Clavier2DWindow())
+        self.gestionnaire_windows.nouvelle_window("Accueil", AccueilWindow(self.krono))
+        self.gestionnaire_windows.nouvelle_window("Ecoute", EcouteWindow(self.krono))
+        self.gestionnaire_windows.nouvelle_window("Clavier2D", Clavier2DWindow(self.krono))
 
         self.fait_naitre_main_window()
         return
@@ -27,7 +74,8 @@ class MainWin:
         with dpg.window(tag=self.winID) as win_main:
             with dpg.menu_bar():
                 with dpg.menu(label="Fichier"):
-                    dpg.add_menu_item(label="Accueil", callback=lambda: self.gestionnaire_windows.afficher_window("Accueil"))
+                    dpg.add_menu_item(label="Accueil",
+                                      callback=lambda: self.gestionnaire_windows.afficher_window("Accueil"))
                     dpg.add_menu_item(label="Exporter données")
                     dpg.add_separator()
                     dpg.add_menu_item(label="Plein écran", callback=lambda: dpg.toggle_viewport_fullscreen())
@@ -36,12 +84,14 @@ class MainWin:
                     dpg.add_menu_item(label="Quitter", callback=lambda: dpg.stop_dearpygui())
 
                 with dpg.menu(label="Ecoute"):
-                    dpg.add_menu_item(label="Enregistrer", callback=lambda: self.gestionnaire_windows.afficher_window("Ecoute"))
+                    dpg.add_menu_item(label="Enregistrer",
+                                      callback=lambda: self.gestionnaire_windows.afficher_window("Ecoute"))
                     dpg.add_menu_item(label="Configurer")
 
                 with dpg.menu(label="Stats"):
                     dpg.add_menu_item(label="Statistique")
-                    dpg.add_menu_item(label="Clavier 2D", callback=lambda: self.gestionnaire_windows.afficher_window("Clavier2D"))
+                    dpg.add_menu_item(label="Clavier 2D",
+                                      callback=lambda: self.gestionnaire_windows.afficher_window("Clavier2D"))
 
                 with dpg.menu(label="Aide"):
                     dpg.add_menu_item(label="Mode d'emploi")
@@ -55,7 +105,8 @@ class MainWin:
                 with dpg.menu(label="Tools"):
                     dpg.add_menu_item(label="Show Debug", callback=lambda: dpg.show_tool(dpg.mvTool_Debug))
                     dpg.add_menu_item(label="Show Font Manager", callback=lambda: dpg.show_tool(dpg.mvTool_Font))
-                    dpg.add_menu_item(label="Show Item Registry",callback=lambda: dpg.show_tool(dpg.mvTool_ItemRegistry))
+                    dpg.add_menu_item(label="Show Item Registry",
+                                      callback=lambda: dpg.show_tool(dpg.mvTool_ItemRegistry))
                     dpg.add_menu_item(label="Show Metrics", callback=lambda: dpg.show_tool(dpg.mvTool_Metrics))
                     dpg.add_menu_item(label="Toggle Fullscreen", callback=lambda: dpg.toggle_viewport_fullscreen())
 
@@ -77,11 +128,11 @@ class GestionWindow:
         self.windows = {}
         return
 
-    def nouvelle_window(self, nom:str, window):
+    def nouvelle_window(self, nom: str, window):
         window.parent_id = self.parent
         self.windows[nom] = window
 
-    def afficher_window(self, nom:str):
+    def afficher_window(self, nom: str):
         if self.window_courante:
             dpg.hide_item(self.window_courante)
 
@@ -99,19 +150,21 @@ class GestionWindow:
         self.window_courante = actuel.winID
         return
 
+
 class BebeWindow:
-    def __init__(self, window_id):
+    def __init__(self, window_id, krono_instance):
         self.winID = window_id
         self.vivante = False
         self.parent_id = None
         self.data = {}
+        self.krono = krono_instance
         return
 
     def cree(self):
-         if not self.vivante:
+        if not self.vivante:
             self._naissance()
             self.vivante = True
-         return
+        return
 
     def _naissance(self):
         pass
@@ -119,15 +172,17 @@ class BebeWindow:
     def actualiser_donnees(self):
         pass
 
+
 class AccueilWindow(BebeWindow):
     """
-    Class de la fenêtre d’accueil de l'interface.
+    Class de la fenêtre d'accueil de l'interface.
     """
-    def __init__(self) -> None:
+
+    def __init__(self, krono_instance) -> None:
         """
         Création de l'instance
         """
-        super().__init__("Accueil")
+        super().__init__("Accueil", krono_instance)
         return
 
     def _naissance(self) -> None:
@@ -147,7 +202,8 @@ class AccueilWindow(BebeWindow):
                     dpg.add_text("Actions rapides")
                     dpg.add_separator()
                     dpg.add_button(label="Faire une écoute", width=-1,
-                                   callback=lambda: main_win.gestionnaire_windows.afficher_window("Ecoute"))
+                                   callback=lambda: self.get_main_window().gestionnaire_windows.afficher_window(
+                                       "Ecoute"))
                     dpg.add_button(label="Voir statistiques", width=-1)
                     dpg.add_button(label="Configuration", width=-1)
 
@@ -161,17 +217,23 @@ class AccueilWindow(BebeWindow):
                     dpg.add_text("Temps total : 0h 0m")
         return
 
+    def get_main_window(self):
+        """Méthode helper pour accéder à la fenêtre principale"""
+        return dpg.get_item_user_data("main_win") if dpg.does_item_exist("main_win") else None
+
+
 class EcouteWindow(BebeWindow):
     """
     Class de la fenêtre dearpygui pour gérer les écoutes.
     """
-    def __init__(self):
+
+    def __init__(self, krono_instance):
         """
-        Création de l’instance.
+        Création de l'instance.
         """
-        super().__init__("Ecoute")
+        super().__init__("Ecoute", krono_instance)
         return
-    
+
     def _naissance(self) -> None:
         """
         Définit les élements de la fenêtre EcouteWindow.\n
@@ -220,20 +282,20 @@ class EcouteWindow(BebeWindow):
             dpg.add_text(f"Nombre total d'écoute faite:  {len(self.data["ecoute_session_table"])}")
             dpg.add_separator()
             with dpg.table(header_row=True, no_host_extendX=True, context_menu_in_body=True,
-                           row_background=True, policy=dpg.mvTable_SizingStretchSame,scrollY=True,
+                           row_background=True, policy=dpg.mvTable_SizingStretchSame, scrollY=True,
                            clipper=True, height=-1, resizable=True, delay_search=True, borders_outerH=True,
                            borders_innerV=True, borders_outerV=True):
-                
+
                 dpg.add_table_column(label="Nom")
                 dpg.add_table_column(label="Date")
                 dpg.add_table_column(label="Durée")
                 dpg.add_table_column(label="Jeu")
-                
+
                 for i in self.data["ecoute_session_table"]:
                     with dpg.table_row():
                         dpg.add_text(f"{i[0]}")
                         dpg.add_text(f"{unix_to_date(i[1])}")
-                        dpg.add_text(unix_to_time(i[2]-i[1]))
+                        dpg.add_text(unix_to_time(i[2] - i[1]))
                         dpg.add_text(f"{i[3]}")
 
     def set_donnees(self) -> None:
@@ -243,14 +305,15 @@ class EcouteWindow(BebeWindow):
         Returns:
             None
         """
-        self.data["ecoute_session_table"] = krono.bd.select_ecoute_session()
-        self.data["dict_rep_code"] = {v: k for k, v in {cle: valeur[0] for cle, valeur in krono.mapping.items()}.items()}
-        self.data["liste_jeu"] = [s[0] for s in krono.bd.select_list_jeu()]
+        self.data["ecoute_session_table"] = self.krono.bd.select_ecoute_session()
+        self.data["dict_rep_code"] = {v: k for k, v in
+                                      {cle: valeur[0] for cle, valeur in self.krono.mapping.items()}.items()}
+        self.data["liste_jeu"] = [s[0] for s in self.krono.bd.select_list_jeu()]
         return
 
     def actualiser_donnees(self) -> None:
         """
-        Fait l’actualisation des données visuellement, c’est-à-dire détruit la fenêtre et l'affiche de nouveau avec
+        Fait l'actualisation des données visuellement, c'est-à-dire détruit la fenêtre et l'affiche de nouveau avec
         les données en mémoire.
         Returns:
             None
@@ -266,7 +329,7 @@ class EcouteWindow(BebeWindow):
 
     def valider_nouveau_jeu(self) -> None:
         """
-        Méthode pour valider la création d’un nouveau jeu. Récupère les données des champs dpg necessaire pour la création
+        Méthode pour valider la création d'un nouveau jeu. Récupère les données des champs dpg necessaire pour la création
         et envoie les données pour faire l'ajout. Puis actualise la fenêtre.
         Returns:
             None
@@ -277,10 +340,11 @@ class EcouteWindow(BebeWindow):
         val4 = self.data["dict_rep_code"][dpg.get_value("champ_jeu4")]
         val5 = self.data["dict_rep_code"][dpg.get_value("champ_jeu5")]
         val6 = self.data["dict_rep_code"][dpg.get_value("champ_jeu6")]
-        ajout = krono.bd.ajout_jeu(val1, val2, val3, val4, val5, val6)
+        ajout = self.krono.bd.ajout_jeu(val1, val2, val3, val4, val5, val6)
         if ajout:
             with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag="popup_success",
-                            pos=(dpg.get_viewport_client_width()//2-150, dpg.get_viewport_client_height()//2-75)):
+                            pos=(dpg.get_viewport_client_width() // 2 - 150,
+                                 dpg.get_viewport_client_height() // 2 - 75)):
                 dpg.add_text("Jeu ajouté avec succès")
                 dpg.add_spacer(height=10)
                 dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("popup_success"))
@@ -296,7 +360,7 @@ class EcouteWindow(BebeWindow):
         """
         valjeu = dpg.get_value("champ_jeu")
         valnom = dpg.get_value("champ_nom")
-        krono.start(valnom, valjeu)
+        self.krono.start(valnom, valjeu)
 
         with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag="popup_ecoute",
                         pos=(dpg.get_viewport_client_width() // 2 - 150, dpg.get_viewport_client_height() // 2 - 75)):
@@ -306,29 +370,31 @@ class EcouteWindow(BebeWindow):
 
         self.actualiser_donnees()
         return
-    
+
+
 class Clavier2DWindow(BebeWindow):
     """
-    Class pour visualiser sur un clavier généré le nombre d’appuis par touche par coloration de ce dernier.
+    Class pour visualiser sur un clavier généré le nombre d'appuis par touche par coloration de ce dernier.
     """
-    def __init__(self) -> None:
+
+    def __init__(self, krono_instance) -> None:
         """
-        Création de l’instance.
+        Création de l'instance.
         """
-        super().__init__("Clavier2D")
+        super().__init__("Clavier2D", krono_instance)
         return
-    
+
     def _naissance(self) -> None:
         """
         Définit les éléments de la fenêtre Clavier2DWindow.\n
-            - Légende du nombre d’appuis mit en correspondance de la couleur.
-            - Clavier 2D coloré en fonction du nombre d’appuis de la session choisie.
-            - Choix de la session dont on veut visualiser les nombres d’appuis.
+            - Légende du nombre d'appuis mit en correspondance de la couleur.
+            - Clavier 2D coloré en fonction du nombre d'appuis de la session choisie.
+            - Choix de la session dont on veut visualiser les nombres d'appuis.
         Returns:
             None
         """
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
-            #get_colormap_color(colormap_id, index)
+            # get_colormap_color(colormap_id, index)
             dpg.add_text("Clavier 2D des appuis")
             dpg.add_separator()
 
@@ -337,15 +403,15 @@ class Clavier2DWindow(BebeWindow):
             dpg.bind_colormap(dpg.last_item(), dpg.mvPlotColormap_Hot)
 
 
-def unix_to_time(horaire:int = 0, retour: bool = True) -> Union[str, tuple[int, int, int]]:
+def unix_to_time(horaire: int = 0, retour: bool = True) -> Union[str, tuple[int, int, int]]:
     """
-    Transforme une durée au format Unix en chaine de character ou en un tuple d’entier correspondant aux heures, minutes
-    secondes de l’horaire.
-    Args :
-        horaire (int) : Une durée au format Unix.
-        retour (bool) : True pour une chaine de character, false pour un tuple d’entier.
+    Transforme une durée au format Unix en chaine de character ou en un tuple d'entier correspondant aux heures, minutes
+    secondes de l'horaire.
+    Args :
+        horaire (int) : Une durée au format Unix.
+        retour (bool) : True pour une chaine de character, false pour un tuple d'entier.
 
-    Returns :
+    Returns :
         La durée sous le format en fonction du paramètre retour.
 
     """
@@ -356,62 +422,28 @@ def unix_to_time(horaire:int = 0, retour: bool = True) -> Union[str, tuple[int, 
     if retour:
         heure = str(heure)
         mini = str(mini)
-        if len(mini) == 1 :
+        if len(mini) == 1:
             mini = "0" + mini
         sec = str(sec)
-        if len(sec) == 1 :
+        if len(sec) == 1:
             sec = "0" + sec
         return f"{heure}:{mini}:{sec}"
     else:
         return heure, mini, sec
 
 
-def unix_to_date(horaire:int = 0, retour: bool = True) -> Union[str, datetime]:
+def unix_to_date(horaire: int = 0, retour: bool = True) -> Union[str, datetime]:
     """
     Transforme un horaire au format Unix au format Jour/Mois/Année Heure:Minutes:Seconde en chaine de character ou
     au format datetime.
-    Args :
-        horaire (int) : L’horodatage au format Unix.
-        retour (bool) : True pour la chaine de character, False pour le format datetime.
+    Args :
+        horaire (int) : L'horodatage au format Unix.
+        retour (bool) : True pour la chaine de character, False pour le format datetime.
 
-    Returns :
-        L’horodatage sous le format en fonction du paramètre retour.
+    Returns :
+        L'horodatage sous le format en fonction du paramètre retour.
     """
     if retour:
         return datetime.datetime.fromtimestamp(horaire).strftime("%d/%m/%Y %H:%M:%S")
     else:
         return datetime.time
-
-
-def main():
-    dpg.create_context()
-
-    try:
-        from Theme_NeoDark import theme
-        dpg.bind_theme(theme)
-    except Exception as e:
-        print(f"Theme_NeoDark non trouvé, utilisation du thème par défaut {e}")
-
-    global main_win
-    main_win = MainWin()
-
-    dpg.create_viewport(title='Nomos', width=1280, height=720)
-
-    icon_path = "ressources/Nomos.ico"
-    if os.path.exists(icon_path):
-        dpg.set_viewport_small_icon(icon_path)
-        dpg.set_viewport_large_icon(icon_path)
-
-    dpg.setup_dearpygui()
-    dpg.set_primary_window(main_win.winID, True)
-
-    main_win.gestionnaire_windows.afficher_window("Accueil")
-
-    dpg.show_viewport()
-    dpg.start_dearpygui()
-    dpg.destroy_context()
-
-if __name__ == "__main__":
-    global krono
-    krono = AppKrono()
-    main()

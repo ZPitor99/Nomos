@@ -35,7 +35,7 @@ class AppKrono:
         self.bd = None
 
         # Configuration du répertoire des logs
-        log_dir = "logs"
+        log_dir = "../logs"
         os.makedirs(log_dir, exist_ok=True)
         log_file = os.path.join(log_dir, "logger.log")
 
@@ -60,7 +60,7 @@ class AppKrono:
         self.logger.info("=== === === Logger initialisé. === === ===")
 
         try:
-            self.bd = gsql.GestionSqlite("mesures.db", self.logger)
+            self.bd = gsql.GestionSqlite("../mesures.db", self.logger)
         except Exception as e:
             self.logger.error(f"Erreur lors de initialisation de la bd : {e}")
 

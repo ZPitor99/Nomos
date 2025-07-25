@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 with dpg.theme() as theme:
     with dpg.font_registry():
         fontsize = 40
-        default_font = dpg.add_font("ressources/consola.ttf", fontsize)
+        default_font = dpg.add_font("../ressources/consola.ttf", fontsize)
 
     dpg.bind_font(default_font)
     dpg.set_global_font_scale(0.5)

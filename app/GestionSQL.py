@@ -6,8 +6,8 @@ import yaml
 import logging
 import os
 
-from AnalyseEnregistrement import Enregistrement
-from Flushhandler import FlushableRotatingFileHandler
+from app.AnalyseEnregistrement import Enregistrement
+from app.Flushhandler import FlushableRotatingFileHandler
 
 
 class GestionSqlite:
@@ -40,7 +40,7 @@ class GestionSqlite:
             raise Exception(f"Erreur lors de la connexion à la base de données : {e}")
 
         # Logger
-        log_dir = "logs"
+        log_dir = "../logs"
         os.makedirs(log_dir, exist_ok=True)
         log_file = os.path.join(log_dir, "loggerdb.log")
 
@@ -59,19 +59,19 @@ class GestionSqlite:
 
         # Chargement des scriptes avec gestion d'erreurs
         try:
-            with open("info_sql/insertion.yaml", "r") as file:
+            with open("../info_sql/insertion.yaml", "r") as file:
                 self.commande_insert = yaml.safe_load(file)
 
-            with open("info_sql/selection.yaml", "r") as file:
+            with open("../info_sql/selection.yaml", "r") as file:
                 self.commande_select = yaml.safe_load(file)
 
-            with open("info_sql/modification.yaml", "r") as file:
+            with open("../info_sql/modification.yaml", "r") as file:
                 self.commande_update = yaml.safe_load(file)
 
-            with open("info_sql/suppression.yaml", "r") as file:
+            with open("../info_sql/suppression.yaml", "r") as file:
                 self.commande_delete = yaml.safe_load(file)
 
-            with open("info_sql/setup.yaml", "r") as file:
+            with open("../info_sql/setup.yaml", "r") as file:
                 self.setup = yaml.safe_load(file)
             self.logger.info("Chargement des scriptes SQL fait.")
         except Exception as e:
