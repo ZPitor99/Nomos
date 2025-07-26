@@ -1,8 +1,12 @@
 import ctypes
+import time
+import threading
 import dearpygui.dearpygui as dpg
 import os
 import datetime
 from typing import Union
+
+import keyboard
 
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
@@ -234,7 +238,7 @@ class EcouteWindow(BebeWindow):
         Création de l'instance.
         """
         super().__init__("Ecoute", krono_instance)
-        self.item_activation = ["bnt_ecoute", "btn_creer"]
+        self.item_activation = [f"{self.winID}_bnt_ecoute", f"{self.winID}_btn_creer"]
         return
 
     def _naissance(self) -> None:
@@ -257,7 +261,7 @@ class EcouteWindow(BebeWindow):
                     dpg.add_text("Lancer une écoute")
                     dpg.add_separator()
                     dpg.add_button(label="Nouvelle écoute", width=-1, callback=lambda: self.start_ecoute(),
-                                   tag="bnt_ecoute")
+                                   tag=f"{self.winID}_bnt_ecoute")
                     dpg.add_text("Nom session")
                     dpg.add_input_text(width=-1, tag="champ_nom")
                     dpg.add_text("Jeu")
@@ -280,9 +284,9 @@ class EcouteWindow(BebeWindow):
                                     else:
                                         dpg.add_input_text(width=200, tag=elem[2])
                         dpg.add_spacer(height=15)
-                        dpg.add_button(label="Créer", callback=lambda: self.valider_nouveau_jeu(), tag="btn_creer")
+                        dpg.add_button(label="Créer", callback=lambda: self.valider_nouveau_jeu(), tag=f"{self.winID}_btn_creer")
 
-                    dpg.add_text("Enregistrement en cour", tag="enregistrement", color=(21, 20, 25))
+                    dpg.add_text("Enregistrement en cour", tag=f"{self.winID}_enregistrement", color=(21, 20, 25))
 
             dpg.add_spacer(height=10)
             dpg.add_text(f"Nombre total d'écoute faite:  {len(self.data["ecoute_session_table"])}")
@@ -348,12 +352,12 @@ class EcouteWindow(BebeWindow):
         val6 = self.data["dict_rep_code"][dpg.get_value("champ_jeu6")]
         ajout = self.krono.bd.ajout_jeu(val1, val2, val3, val4, val5, val6)
         if ajout:
-            with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag="popup_success",
+            with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag=f"{self.winID}_popup_success",
                             pos=(dpg.get_viewport_client_width() // 2 - 150,
                                  dpg.get_viewport_client_height() // 2 - 75)):
                 dpg.add_text("Jeu ajouté avec succès")
                 dpg.add_spacer(height=10)
-                dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("popup_success"))
+                dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item(f"{self.winID}_popup_success"))
 
         self.actualiser_donnees()
         return
@@ -366,24 +370,24 @@ class EcouteWindow(BebeWindow):
         """
         for elem in self.item_activation:
             dpg.configure_item(elem, enabled=False)
-        dpg.configure_item("enregistrement", color=(63,234,21))
+        dpg.configure_item(f"{self.winID}_enregistrement", color=(63,234,21))
 
         valjeu = dpg.get_value("champ_jeu")
         valnom = dpg.get_value("champ_nom")
         self.krono.start(valnom, valjeu)
 
-        with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag="popup_ecoute",
+        with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag=f"{self.winID}_popup_ecoute",
                         pos=(dpg.get_viewport_client_width() // 2 - 150, dpg.get_viewport_client_height() // 2 - 75),
                         no_title_bar=True):
             from Theme_NeoDark import theme
-            dpg.bind_item_theme("popup_ecoute", theme)
+            dpg.bind_item_theme(f"{self.winID}_popup_ecoute", theme)
             dpg.add_text("Fin de la session", indent=50)
             dpg.add_spacer(height=10)
-            dpg.add_button(label="OK", width=-1, callback=lambda: dpg.delete_item("popup_ecoute"))
+            dpg.add_button(label="OK", width=-1, callback=lambda: dpg.delete_item(f"{self.winID}_popup_ecoute"))
 
         for elem in self.item_activation:
             dpg.configure_item(elem, enabled=True)
-        dpg.configure_item("enregistrement", color=(21, 20, 25))
+        dpg.configure_item(f"{self.winID}_enregistrement", color=(21, 20, 25))
 
         self.actualiser_donnees()
         return
@@ -393,33 +397,266 @@ class Configuration(BebeWindow):
 
     def __init__(self, krono_instance) -> None:
         super().__init__("Conf", krono_instance)
+        self.azerty_layout = [
+            ['Echap', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'],
+            ['²', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ')', '=', 'Retour'],
+            ['Tab', 'A', 'Z', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '^', '$', 'Entrée'],
+            ['Verr.Maj', 'Q', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'Ù', '*'],
+            ['Shift', '<', 'W', 'X', 'C', 'V', 'B', 'N', ',', ';', ':', '!', 'Shift'],
+            ['Ctrl', 'Win', 'Alt', 'Espace', 'AltGr', 'Menu'],
+            ['↑', '↓', '←', '→']
+        ]
+        self.mapping_data = {}  # {scan_code: (représentation, x, y)}
+        self.ligne_courante = 0
+        self.colonne_courante = 0
+        self.is_mapping = False
+        self.mapping_thread = None
+        self.demande_skip = False  # Flag pour gérer le skip
+        self.touche_appuye = None  # Stocke la dernière touche pressée
+        self.keyboard_hook = None  # Hook clavier
         return
 
     def _naissance(self) -> None:
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
-            # get_colormap_color(colormap_id, index)
             dpg.add_text("Configuration des touches")
             dpg.add_separator()
 
             with dpg.group(horizontal=True):
-                with dpg.child_window(width=500, height=-1):
+                # Panel d'instructions (gauche)
+                with dpg.child_window(width=500, height=-1, tag=f"{self.winID}_instructions", no_scrollbar=True):
                     dpg.add_text("Instructions")
                     dpg.add_separator()
-                    dpg.add_spacer(height=10)
+                    dpg.add_spacer(height=5)
                     dpg.add_text("La configuration des touches est nécessaire pour que l'application associe"
-                                 " correctement la touche présser et le caractère de la touche.",
+                                 " correctement la touche pressée et le caractère de la touche.",
                                  bullet=True, wrap=475)
-                    dpg.add_spacer(height=10)
                     dpg.add_text("Appuyer sur la touche correspondante au caractère affiché.",
                                  bullet=True, wrap=475)
-                    dpg.add_spacer(height=10)
                     dpg.add_text("Appuyer sur Passer si la touche n'est pas présente sur votre clavier.",
                                  bullet=True, wrap=475)
-                    dpg.add_spacer(height=10)
-                    dpg.add_text("La configuration est faite sur la base d'un clavier azerty standardisé."
-                                 "La configuration se fera de gauche à droite, de bas en haut",
+                    dpg.add_text("La configuration est faite sur la base d'un clavier azerty standardisé. "
+                                 "La configuration se fera de gauche à droite, de haut en bas.",
                                  bullet=True, wrap=475)
 
+                    dpg.add_spacer(height=20)
+                    dpg.add_separator()
+
+                    dpg.add_text("Statut:", tag=f"{self.winID}_status_label")
+                    dpg.add_text("Prêt à commencer", tag=f"{self.winID}_status", color=(100, 200, 100))
+
+                    dpg.add_spacer(height=10)
+                    dpg.add_text("progression:", tag=f"{self.winID}_progression_label")
+                    dpg.add_progress_bar(default_value=0.0, tag=f"{self.winID}_progression", width=-1)
+                    dpg.add_text("0/0", tag=f"{self.winID}_progression_text")
+
+                # Panel de configuration
+                with dpg.child_window(width=-1, height=-1, tag=f"{self.winID}_config"):
+                    dpg.add_text("Configuration", tag=f"{self.winID}_config_title")
+                    dpg.add_separator()
+
+                    with dpg.group(horizontal=False, tag=f"{self.winID}_touche_courante_group"):
+                        dpg.add_spacer(height=20)
+                        dpg.add_text("Touche à configurer:", tag=f"{self.winID}_current_label")
+                        dpg.add_text("", tag=f"{self.winID}_touche_courante",
+                                     color=(255, 255, 0),
+                                     wrap=400)
+                        dpg.add_spacer(height=10)
+                        dpg.add_text("Position: ", tag=f"{self.winID}_position")
+
+                    dpg.add_spacer(height=30)
+
+                    # Boutons de contrôle
+                    with dpg.group(horizontal=True, tag=f"{self.winID}_controls"):
+                        dpg.add_button(label="Commencer",
+                                       callback=self._debut_mapping,
+                                       tag=f"{self.winID}_start_btn",
+                                       width=100, height=40)
+                        dpg.add_button(label="Passer",
+                                       callback=self._skip_key,
+                                       tag=f"{self.winID}_skip_btn",
+                                       width=100, height=40,
+                                       enabled=False)
+                        dpg.add_button(label="Arrêter",
+                                       callback=self._stop_mapping,
+                                       tag=f"{self.winID}_stop_btn",
+                                       width=100, height=40,
+                                       enabled=False)
+
+                    dpg.add_spacer(height=20)
+
+                    # Zone de logs
+                    dpg.add_text("Journal:")
+                    with dpg.child_window(height=-1, tag=f"{self.winID}_logs"):
+                        dpg.add_text("En attente de configuration...\n", tag=f"{self.winID}_log_contenu")
+        return
+
+    def _keyboard_callback(self, event):
+        """Callback appelé à chaque appui de touche"""
+        if self.is_mapping and event.event_type == keyboard.KEY_DOWN:
+            self.touche_appuye = event.scan_code
+
+    def _debut_mapping(self) -> None:
+        """Lance le processus de mapping"""
+        if not self.is_mapping:
+            self.is_mapping = True
+            self.ligne_courante = 0
+            self.colonne_courante = 0
+            self.mapping_data.clear()
+            self.touche_appuye = None
+
+            # Installer le hook clavier
+            self.keyboard_hook = keyboard.hook(self._keyboard_callback)
+
+            # Mise à jour de l'interface
+            dpg.set_value(f"{self.winID}_start_btn", "En cours...")
+            dpg.configure_item(f"{self.winID}_start_btn", enabled=False)
+            dpg.configure_item(f"{self.winID}_skip_btn", enabled=True)
+            dpg.configure_item(f"{self.winID}_stop_btn", enabled=True)
+            dpg.set_value(f"{self.winID}_status", "Mapping en cours")
+            dpg.configure_item(f"{self.winID}_status", color=(255, 165, 0))
+
+            # Démarrer le thread de mapping
+            self.mapping_thread = threading.Thread(target=self._boucle_capture, daemon=True)
+            self.mapping_thread.start()
+
+    def _boucle_capture(self) -> None:
+        """Boucle principale du mapping dans un thread séparé"""
+        total_keys = sum(len(row) for row in self.azerty_layout)
+        touche_mapper = 0
+
+        self._log_message("Début du mapping des touches...")
+
+        for row_idx, row in enumerate(self.azerty_layout):
+            if not self.is_mapping:
+                break
+
+            for col_idx, key_label in enumerate(row):
+                if not self.is_mapping:
+                    break
+
+                self.ligne_courante = row_idx
+                self.colonne_courante = col_idx
+                self.demande_skip = False
+
+                # Mise à jour de l'interface depuis le thread principal
+                dpg.set_value(f"{self.winID}_touche_courante", f"{key_label}")
+                dpg.set_value(f"{self.winID}_position", f"Position: Ligne {row_idx + 1}, Colonne {col_idx + 1}")
+
+                progression = touche_mapper / total_keys
+                dpg.set_value(f"{self.winID}_progression", progression)
+                dpg.set_value(f"{self.winID}_progression_text", f"{touche_mapper}/{total_keys}")
+
+                self._log_message(f"En attente de la touche: {key_label}")
+
+                # Attendre l'appui de touche ou le skip
+                key_captured = False
+                while not key_captured and self.is_mapping:
+                    if self.demande_skip:
+                        self._log_message(f"Touche '{key_label}' passée")
+                        touche_mapper += 1
+                        self.demande_skip = False
+                        break
+
+                    if self.touche_appuye is not None:
+                        scan_code = self.touche_appuye
+                        self.touche_appuye = None
+
+                        if scan_code in self.mapping_data:
+                            self._log_message(f"Scan code {scan_code} déjà utilisé, passer automatiquement")
+                            touche_mapper += 1
+                            break
+
+                        self.mapping_data[scan_code] = (key_label, col_idx, row_idx)
+                        self._log_message(f"{key_label}: scan_code: {scan_code}, position: ({col_idx}, {row_idx})")
+
+                        touche_mapper += 1
+                        key_captured = True
+
+                    # Pause pour alléger
+                    time.sleep(0.05)
+
+                time.sleep(0.2)
+
+        if self.is_mapping:
+            self._fin_mapping(touche_mapper, total_keys)
+        return
+
+    def _skip_key(self) -> None:
+        """Passe la touche courante"""
+        if self.is_mapping:
+            self.demande_skip = True
+        return
+
+    def _stop_mapping(self) -> None:
+        """Arrête le processus de mapping"""
+        self.is_mapping = False
+
+        if self.keyboard_hook:
+            keyboard.unhook(self.keyboard_hook)
+            self.keyboard_hook = None
+
+        if self.mapping_thread and self.mapping_thread.is_alive():
+            self.mapping_thread.join(timeout=1.0)
+
+        dpg.set_value(f"{self.winID}_start_btn", "Commencer")
+        dpg.configure_item(f"{self.winID}_start_btn", enabled=True)
+        dpg.configure_item(f"{self.winID}_skip_btn", enabled=False)
+        dpg.configure_item(f"{self.winID}_stop_btn", enabled=False)
+        dpg.set_value(f"{self.winID}_status", "Arrêté")
+        dpg.configure_item(f"{self.winID}_status", color=(255, 100, 100))
+        dpg.set_value(f"{self.winID}_touche_courante", "")
+        dpg.set_value(f"{self.winID}_position", "")
+
+        self._log_message("Mapping arrêté par l'utilisateur")
+        return
+
+    def _fin_mapping(self, mapped_keys, total_keys):
+        """Termine le processus de mapping"""
+        self.is_mapping = False
+
+        if self.keyboard_hook:
+            keyboard.unhook(self.keyboard_hook)
+            self.keyboard_hook = None
+
+        dpg.set_value(f"{self.winID}_progression", 1.0)
+        dpg.set_value(f"{self.winID}_progression_text", f"{mapped_keys}/{total_keys}")
+        dpg.set_value(f"{self.winID}_status", "Terminé")
+        dpg.configure_item(f"{self.winID}_status", color=(100, 255, 100))
+
+        dpg.set_value(f"{self.winID}_start_btn", "Recommencer")
+        dpg.configure_item(f"{self.winID}_start_btn", enabled=True)
+        dpg.configure_item(f"{self.winID}_skip_btn", enabled=False)
+        dpg.configure_item(f"{self.winID}_stop_btn", enabled=False)
+
+        dpg.set_value(f"{self.winID}_touche_courante", "Configuration terminée!")
+        dpg.set_value(f"{self.winID}_position", "")
+
+        self._log_message(f"Mapping terminé! {mapped_keys} touches configurées sur {total_keys}")
+        self._log_message("Données prêtes pour sauvegarde en base de données")
+
+        # FAIRE ENREGISTER DANS BD
+        return
+
+    def _log_message(self, message) -> None:
+        """Ajoute un message au journal"""
+        timestamp = time.strftime("%H:%M:%S")
+        log_text = f"[{timestamp}] {message}\n"
+
+        current_log = dpg.get_value(f"{self.winID}_log_contenu")
+        new_log = log_text + current_log
+
+        # 50 derniers msg uniquement
+        lines = new_log.split('\n')
+        if len(lines) > 50:
+            lines = lines[:50]
+            new_log = '\n'.join(lines)
+
+        dpg.set_value(f"{self.winID}_log_contenu", new_log)
+        return
+
+    def get_mapping_data(self) -> dict:
+        """Retourne les données de mapping sous forme de dictionnaire"""
+        return self.mapping_data.copy()
 
 class Clavier2DWindow(BebeWindow):
     """
