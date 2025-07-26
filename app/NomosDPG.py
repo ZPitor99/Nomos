@@ -65,6 +65,7 @@ class MainWin:
         self.gestionnaire_windows = GestionWindow(self.zone_contenu)
         self.gestionnaire_windows.nouvelle_window("Accueil", AccueilWindow(self.krono))
         self.gestionnaire_windows.nouvelle_window("Ecoute", EcouteWindow(self.krono))
+        self.gestionnaire_windows.nouvelle_window("Conf", Configuration(self.krono))
         self.gestionnaire_windows.nouvelle_window("Clavier2D", Clavier2DWindow(self.krono))
 
         self.fait_naitre_main_window()
@@ -86,7 +87,8 @@ class MainWin:
                 with dpg.menu(label="Ecoute"):
                     dpg.add_menu_item(label="Enregistrer",
                                       callback=lambda: self.gestionnaire_windows.afficher_window("Ecoute"))
-                    dpg.add_menu_item(label="Configurer")
+                    dpg.add_menu_item(label="Configurer",
+                                      callback=lambda: self.gestionnaire_windows.afficher_window("Conf"))
 
                 with dpg.menu(label="Stats"):
                     dpg.add_menu_item(label="Statistique")
@@ -232,6 +234,7 @@ class EcouteWindow(BebeWindow):
         Création de l'instance.
         """
         super().__init__("Ecoute", krono_instance)
+        self.item_activation = ["bnt_ecoute", "btn_creer"]
         return
 
     def _naissance(self) -> None:
@@ -253,30 +256,33 @@ class EcouteWindow(BebeWindow):
                 with dpg.child_window(width=300, height=250):
                     dpg.add_text("Lancer une écoute")
                     dpg.add_separator()
-                    dpg.add_button(label="Nouvelle écoute", width=-1, callback=lambda: self.start_ecoute())
+                    dpg.add_button(label="Nouvelle écoute", width=-1, callback=lambda: self.start_ecoute(),
+                                   tag="bnt_ecoute")
                     dpg.add_text("Nom session")
                     dpg.add_input_text(width=-1, tag="champ_nom")
                     dpg.add_text("Jeu")
                     dpg.add_combo(width=-1, items=self.data["liste_jeu"], tag="champ_jeu")
 
                 dpg.add_spacer(width=20)
+                with dpg.group():
+                    with dpg.child_window(width=-1, height=200):
+                        dpg.add_text("Créer un nouveau jeu")
+                        dpg.add_separator()
+                        with dpg.group(horizontal=True):
+                            for elem in [("Nom", False, "champ_jeu1"), ("Description", False, "champ_jeu2"),
+                                         ("T1", True, "champ_jeu3"), ("T2", True, "champ_jeu4"),
+                                         ("T3", True, "champ_jeu5"), ("T4", True, "champ_jeu6")]:
+                                with dpg.group():
+                                    dpg.add_text(elem[0])
+                                    if elem[1]:
+                                        dpg.add_combo(fit_width=True, tag=elem[2],
+                                                      items=sorted(list(self.data["dict_rep_code"].keys())))
+                                    else:
+                                        dpg.add_input_text(width=200, tag=elem[2])
+                        dpg.add_spacer(height=15)
+                        dpg.add_button(label="Créer", callback=lambda: self.valider_nouveau_jeu(), tag="btn_creer")
 
-                with dpg.child_window(width=-1, height=200):
-                    dpg.add_text("Créer un nouveau jeu")
-                    dpg.add_separator()
-                    with dpg.group(horizontal=True):
-                        for elem in [("Nom", False, "champ_jeu1"), ("Description", False, "champ_jeu2"),
-                                     ("T1", True, "champ_jeu3"), ("T2", True, "champ_jeu4"),
-                                     ("T3", True, "champ_jeu5"), ("T4", True, "champ_jeu6")]:
-                            with dpg.group():
-                                dpg.add_text(elem[0])
-                                if elem[1]:
-                                    dpg.add_combo(fit_width=True, tag=elem[2],
-                                                  items=sorted(list(self.data["dict_rep_code"].keys())))
-                                else:
-                                    dpg.add_input_text(width=200, tag=elem[2])
-                    dpg.add_spacer(height=15)
-                    dpg.add_button(label="Créer", callback=lambda: self.valider_nouveau_jeu())
+                    dpg.add_text("Enregistrement en cour", tag="enregistrement", color=(21, 20, 25))
 
             dpg.add_spacer(height=10)
             dpg.add_text(f"Nombre total d'écoute faite:  {len(self.data["ecoute_session_table"])}")
@@ -358,18 +364,61 @@ class EcouteWindow(BebeWindow):
         Returns:
             None
         """
+        for elem in self.item_activation:
+            dpg.configure_item(elem, enabled=False)
+        dpg.configure_item("enregistrement", color=(63,234,21))
+
         valjeu = dpg.get_value("champ_jeu")
         valnom = dpg.get_value("champ_nom")
         self.krono.start(valnom, valjeu)
 
         with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag="popup_ecoute",
-                        pos=(dpg.get_viewport_client_width() // 2 - 150, dpg.get_viewport_client_height() // 2 - 75)):
-            dpg.add_text("Fin de la session")
+                        pos=(dpg.get_viewport_client_width() // 2 - 150, dpg.get_viewport_client_height() // 2 - 75),
+                        no_title_bar=True):
+            from Theme_NeoDark import theme
+            dpg.bind_item_theme("popup_ecoute", theme)
+            dpg.add_text("Fin de la session", indent=50)
             dpg.add_spacer(height=10)
-            dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item("popup_ecoute"))
+            dpg.add_button(label="OK", width=-1, callback=lambda: dpg.delete_item("popup_ecoute"))
+
+        for elem in self.item_activation:
+            dpg.configure_item(elem, enabled=True)
+        dpg.configure_item("enregistrement", color=(21, 20, 25))
 
         self.actualiser_donnees()
         return
+
+
+class Configuration(BebeWindow):
+
+    def __init__(self, krono_instance) -> None:
+        super().__init__("Conf", krono_instance)
+        return
+
+    def _naissance(self) -> None:
+        with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
+            # get_colormap_color(colormap_id, index)
+            dpg.add_text("Configuration des touches")
+            dpg.add_separator()
+
+            with dpg.group(horizontal=True):
+                with dpg.child_window(width=500, height=-1):
+                    dpg.add_text("Instructions")
+                    dpg.add_separator()
+                    dpg.add_spacer(height=10)
+                    dpg.add_text("La configuration des touches est nécessaire pour que l'application associe"
+                                 " correctement la touche présser et le caractère de la touche.",
+                                 bullet=True, wrap=475)
+                    dpg.add_spacer(height=10)
+                    dpg.add_text("Appuyer sur la touche correspondante au caractère affiché.",
+                                 bullet=True, wrap=475)
+                    dpg.add_spacer(height=10)
+                    dpg.add_text("Appuyer sur Passer si la touche n'est pas présente sur votre clavier.",
+                                 bullet=True, wrap=475)
+                    dpg.add_spacer(height=10)
+                    dpg.add_text("La configuration est faite sur la base d'un clavier azerty standardisé."
+                                 "La configuration se fera de gauche à droite, de bas en haut",
+                                 bullet=True, wrap=475)
 
 
 class Clavier2DWindow(BebeWindow):
