@@ -404,7 +404,7 @@ class Configuration(BebeWindow):
             ['Verr.Maj', 'Q', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'Ù', '*'],
             ['Shift', '<', 'W', 'X', 'C', 'V', 'B', 'N', ',', ';', ':', '!', 'Shift'],
             ['Ctrl', 'Win', 'Alt', 'Espace', 'AltGr', 'Menu'],
-            ['↑', '↓', '←', '→']
+            ['Haut', 'Bas', 'Gauche', 'Droite']
         ]
         self.mapping_data = {}  # {scan_code: (représentation, x, y)}
         self.ligne_courante = 0
@@ -445,7 +445,7 @@ class Configuration(BebeWindow):
                     dpg.add_text("Prêt à commencer", tag=f"{self.winID}_status", color=(100, 200, 100))
 
                     dpg.add_spacer(height=10)
-                    dpg.add_text("progression:", tag=f"{self.winID}_progression_label")
+                    dpg.add_text("Progression:", tag=f"{self.winID}_progression_label")
                     dpg.add_progress_bar(default_value=0.0, tag=f"{self.winID}_progression", width=-1)
                     dpg.add_text("0/0", tag=f"{self.winID}_progression_text")
 
