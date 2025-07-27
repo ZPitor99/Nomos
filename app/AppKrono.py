@@ -31,7 +31,7 @@ class AppKrono:
         self.en_enregistrement = False
         self.touches_enfoncees = set()
         self.appui_touche_queue = queue.Queue()
-        self.mapping = None
+        self.mapping = {}
         self.bd = None
 
         # Configuration du répertoire des logs
@@ -69,7 +69,6 @@ class AppKrono:
 
     def __str__(self) -> str:
         return f"AppKrono de session {self.identifiant_session} avec le status d'enregistrement {self.en_enregistrement}"
-
 
     def __del__(self):
         self.fin()
@@ -119,7 +118,8 @@ class AppKrono:
             if event.event_type == "down":
                 if event.name not in self.touches_enfoncees:
                     self.touches_enfoncees.add(event.name)
-                    self.appui_touche_queue.put((float(datetime.now().timestamp()), self.identifiant_session, event.scan_code))
+                    self.appui_touche_queue.put(
+                        (float(datetime.now().timestamp()), self.identifiant_session, event.scan_code))
             elif event.event_type == "up":
                 self.touches_enfoncees.discard(event.name)
         except Exception as e:
@@ -228,7 +228,7 @@ class AppKrono:
             self.logger.info("Mapping déjà fait.")
             return
 
-    def setup_session(self, info:str, jeu:str) -> None:
+    def setup_session(self, info: str, jeu: str) -> None:
         """
         Applique les informations de base de la session dans la bd.\n
         Notifications dans le logger.
@@ -251,7 +251,7 @@ class AppKrono:
         except Exception as e:
             self.logger.error(f"Problème horaire fin : {e}.")
 
-    def start(self, info_session:str, jeu_session:str) -> None:
+    def start(self, info_session: str, jeu_session: str) -> None:
         """
         Lance un thread pour enregister toutes les deux secondes.
         Lance l’écoute des touches du clavier.\n
@@ -278,6 +278,7 @@ class AppKrono:
         self.logger.info("Fin.")
         self.en_enregistrement = False
         return
+
 
 # Empecher plusieurs lancements
 lock_path = os.path.join(os.path.expanduser("~"), ".Nomos.lock")

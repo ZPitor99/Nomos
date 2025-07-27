@@ -52,7 +52,8 @@ class GestionSqlite:
             self.logger = logging.getLogger("GestionSqlite")
             self.logger.setLevel(logging.INFO)
             if not self.logger.handlers:
-                file_handler = FlushableRotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+                file_handler = FlushableRotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=3,
+                                                            encoding="utf-8")
                 file_handler.setFormatter(logging.Formatter('%(name)s - %(asctime)s - %(levelname)s - %(message)s'))
                 self.logger.addHandler(file_handler)
             self.logger.info("=== === === GestionSqlite initialisée avec logger par défaut. === === ===")
@@ -141,7 +142,7 @@ class GestionSqlite:
         """
         return self.ouvert
 
-    def ajout_jeu(self, nom: str, description: str, touche1: int, touche2: int, touche3: int,touche4: int) -> bool:
+    def ajout_jeu(self, nom: str, description: str, touche1: int, touche2: int, touche3: int, touche4: int) -> bool:
         """
         Ajoute le jeu dans la table jeu.\n
         Renvoie True si l'action, c’est bien déroulée, False sinon.\n
@@ -266,7 +267,7 @@ class GestionSqlite:
         try:
             if self.cursor and self.connection:
                 self.logger.info("Début du nettoyage de la base de données.")
-                #self.delete_all("frappe")
+                # self.delete_all("frappe")
                 self.cursor.execute(self.setup["nettoyage"])
                 self.connection.commit()
                 self.logger.info("Nettoyage terminé avec succès.")
@@ -398,7 +399,7 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
-    def insertion_session(self, id_session: int, info_session:str, jeu:str ) -> None:
+    def insertion_session(self, id_session: int, info_session: str, jeu: str) -> None:
         """
         Insert les informations minimum pour créer une session.\n
         Notifications dans le logger.
@@ -427,7 +428,7 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
-    def modification_fin_session(self, horaire:int, session_courante:int) -> None:
+    def modification_fin_session(self, horaire: int, session_courante: int) -> None:
         """
         Modifie la session courante pour donner des informations suite à la fin de cette dernière.\n
         Notifications dans le logger.
@@ -446,7 +447,7 @@ class GestionSqlite:
             try:
                 self.cursor.execute(
                     self.commande_update["modification_fin_session"],
-                    (horaire,session_courante),
+                    (horaire, session_courante),
                 )
                 self.connection.commit()
                 self.logger.info(f"Modification de la session : horaire de fin : {horaire}")
@@ -455,7 +456,7 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
-    def enregistrement_mapping(self, mapping:dict[int:list]) -> None:
+    def enregistrement_mapping(self, mapping: dict[int:list]) -> None:
         """
         Rentre dans la table touche le mapping fait pas l'utilisateur.\n
         Notifications dans le logger.
@@ -486,7 +487,7 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
-    def data_enregistrement(self, id_session:int) -> list[Enregistrement]:
+    def data_enregistrement(self, id_session: int) -> list[Enregistrement]:
         """
         data des frappes join de la représentation correspondante.
         Args:
@@ -516,7 +517,7 @@ class GestionSqlite:
             except Exception as e:
                 self.logger.error(f"Erreur lors de la selection de data_enregistrement : {e}")
         return []
-    
+
     def select_ecoute_session(self) -> list[Any] | None:
         """Donne les informations pour la table qui affiche les sessions dans la fenêtre d’écoute.
 
@@ -539,7 +540,7 @@ class GestionSqlite:
                 self.logger.error(f"Erreur lors de la selection dans session: {e}")
         return []
 
-    def selection_clavier2d(self, id_session:int) -> list[Any] | None:
+    def selection_clavier2d(self, id_session: int) -> list[Any] | None:
         """
         Donne les résultats de la requête pour les frappes par touches lors de la session en paramètre.
         Args:
@@ -582,7 +583,6 @@ class GestionSqlite:
             except Exception as e:
                 self.logger.error(f"Erreur lors du test : {e}")
                 return None
-
 
 # if __name__ == "__main__":
 #     gestSQL = None

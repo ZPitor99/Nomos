@@ -257,7 +257,7 @@ class EcouteWindow(BebeWindow):
             dpg.add_separator()
 
             with dpg.group(horizontal=True):
-                with dpg.child_window(width=300, height=250):
+                with dpg.child_window(width=300, height=300):
                     dpg.add_text("Lancer une écoute")
                     dpg.add_separator()
                     dpg.add_button(label="Nouvelle écoute", width=-1, callback=lambda: self.start_ecoute(),
@@ -269,7 +269,7 @@ class EcouteWindow(BebeWindow):
 
                 dpg.add_spacer(width=20)
                 with dpg.group():
-                    with dpg.child_window(width=-1, height=200):
+                    with dpg.child_window(width=-1, height=250):
                         dpg.add_text("Créer un nouveau jeu")
                         dpg.add_separator()
                         with dpg.group(horizontal=True):
@@ -284,7 +284,8 @@ class EcouteWindow(BebeWindow):
                                     else:
                                         dpg.add_input_text(width=200, tag=elem[2])
                         dpg.add_spacer(height=15)
-                        dpg.add_button(label="Créer", callback=lambda: self.valider_nouveau_jeu(), tag=f"{self.winID}_btn_creer")
+                        dpg.add_button(label="Créer", callback=lambda: self.valider_nouveau_jeu(),
+                                       tag=f"{self.winID}_btn_creer")
 
                     dpg.add_text("Enregistrement en cour", tag=f"{self.winID}_enregistrement", color=(21, 20, 25))
 
@@ -316,8 +317,12 @@ class EcouteWindow(BebeWindow):
             None
         """
         self.data["ecoute_session_table"] = self.krono.bd.select_ecoute_session()
+        data_map = self.krono.mapping
+        if data_map:
+            data_map = {""}
+        data_map = data_map.items()
         self.data["dict_rep_code"] = {v: k for k, v in
-                                      {cle: valeur[0] for cle, valeur in self.krono.mapping.items()}.items()}
+                                      {cle: valeur[0] for cle, valeur in data_map}.items()}
         self.data["liste_jeu"] = [s[0] for s in self.krono.bd.select_list_jeu()]
         return
 
@@ -339,26 +344,26 @@ class EcouteWindow(BebeWindow):
 
     def valider_nouveau_jeu(self) -> None:
         """
-        Méthode pour valider la création d'un nouveau jeu. Récupère les données des champs dpg necessaire pour la création
+        Méthode pour valider la création d’un nouveau jeu. Récupère les données des champs dpg necessaire pour la création
         et envoie les données pour faire l'ajout. Puis actualise la fenêtre.
         Returns:
             None
         """
-        val1 = dpg.get_value("champ_jeu1")
-        val2 = dpg.get_value("champ_jeu2")
-        val3 = self.data["dict_rep_code"][dpg.get_value("champ_jeu3")]
-        val4 = self.data["dict_rep_code"][dpg.get_value("champ_jeu4")]
-        val5 = self.data["dict_rep_code"][dpg.get_value("champ_jeu5")]
-        val6 = self.data["dict_rep_code"][dpg.get_value("champ_jeu6")]
-        ajout = self.krono.bd.ajout_jeu(val1, val2, val3, val4, val5, val6)
-        if ajout:
-            with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag=f"{self.winID}_popup_success",
-                            pos=(dpg.get_viewport_client_width() // 2 - 150,
-                                 dpg.get_viewport_client_height() // 2 - 75)):
-                dpg.add_text("Jeu ajouté avec succès")
-                dpg.add_spacer(height=10)
-                dpg.add_button(label="OK", width=100, callback=lambda: dpg.delete_item(f"{self.winID}_popup_success"))
-
+        try:
+            val1 = dpg.get_value("champ_jeu1")
+            val2 = dpg.get_value("champ_jeu2")
+            val3 = self.data["dict_rep_code"][dpg.get_value("champ_jeu3")]
+            val4 = self.data["dict_rep_code"][dpg.get_value("champ_jeu4")]
+            val5 = self.data["dict_rep_code"][dpg.get_value("champ_jeu5")]
+            val6 = self.data["dict_rep_code"][dpg.get_value("champ_jeu6")]
+            if any([v is None or v == "" for v in [val1, val2, val3, val4, val5, val6]]):
+                self.popup_creer(3)
+            else:
+                ajout = self.krono.bd.ajout_jeu(val1, val2, val3, val4, val5, val6)
+                if ajout:
+                    self.popup_creer(2)
+        except Exception as e:
+            print(e)
         self.actualiser_donnees()
         return
 
@@ -368,28 +373,53 @@ class EcouteWindow(BebeWindow):
         Returns:
             None
         """
-        for elem in self.item_activation:
-            dpg.configure_item(elem, enabled=False)
-        dpg.configure_item(f"{self.winID}_enregistrement", color=(63,234,21))
+        try:
+            valjeu = dpg.get_value("champ_jeu")
+            valnom = dpg.get_value("champ_nom")
 
-        valjeu = dpg.get_value("champ_jeu")
-        valnom = dpg.get_value("champ_nom")
-        self.krono.start(valnom, valjeu)
+            if valjeu or valnom or valnom == "" or valjeu == "":
+                self.popup_creer(3)
+            else:
+                for elem in self.item_activation:
+                    dpg.configure_item(elem, enabled=False)
+                dpg.configure_item(f"{self.winID}_enregistrement", color=(63, 234, 21))
 
-        with dpg.window(label="Information", modal=True, no_close=True, width=300, height=150, tag=f"{self.winID}_popup_ecoute",
-                        pos=(dpg.get_viewport_client_width() // 2 - 150, dpg.get_viewport_client_height() // 2 - 75),
-                        no_title_bar=True):
-            from Theme_NeoDark import theme
-            dpg.bind_item_theme(f"{self.winID}_popup_ecoute", theme)
-            dpg.add_text("Fin de la session", indent=50)
-            dpg.add_spacer(height=10)
-            dpg.add_button(label="OK", width=-1, callback=lambda: dpg.delete_item(f"{self.winID}_popup_ecoute"))
+                self.krono.start(valnom, valjeu)
+                self.popup_creer(1)
+        except Exception as e:
+            print(e)
 
         for elem in self.item_activation:
             dpg.configure_item(elem, enabled=True)
         dpg.configure_item(f"{self.winID}_enregistrement", color=(21, 20, 25))
 
         self.actualiser_donnees()
+        return
+
+    def popup_creer(self, type: int = 0) -> None:
+
+        if type == 1:
+            information = "Fin de la session"
+            x = 280
+        elif type == 2:
+            information = "Jeu ajouté avec succès"
+            x = 350
+        elif type == 3:
+            information = "Champ incorrect"
+            x = 300
+        else:
+            information = "Une erreur est survenue"
+            x = 400
+
+        with dpg.window(label="Information", modal=True, no_close=True, width=x, height=150,
+                        tag=f"{self.winID}_popup",
+                        pos=(dpg.get_viewport_client_width() // 2 - (x//2), dpg.get_viewport_client_height() // 2 - 75),
+                        no_title_bar=True):
+            from Theme_NeoDark import theme
+            dpg.bind_item_theme(f"{self.winID}_popup", theme)
+            dpg.add_text(f"{information}", indent=(x//5))
+            dpg.add_spacer(height=10)
+            dpg.add_button(label="OK", width=-1, callback=lambda: dpg.delete_item(f"{self.winID}_popup"))
         return
 
 
@@ -470,7 +500,7 @@ class Configuration(BebeWindow):
                         dpg.add_button(label="Commencer",
                                        callback=self._debut_mapping,
                                        tag=f"{self.winID}_start_btn",
-                                       width=100, height=40)
+                                       width=130, height=40)
                         dpg.add_button(label="Passer",
                                        callback=self._skip_key,
                                        tag=f"{self.winID}_skip_btn",
@@ -657,6 +687,7 @@ class Configuration(BebeWindow):
     def get_mapping_data(self) -> dict:
         """Retourne les données de mapping sous forme de dictionnaire"""
         return self.mapping_data.copy()
+
 
 class Clavier2DWindow(BebeWindow):
     """

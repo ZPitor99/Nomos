@@ -63,3 +63,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Envoyer les donnée de mapping sur bd
+# Gérer jeu sans champ
+# jeu par défaut
