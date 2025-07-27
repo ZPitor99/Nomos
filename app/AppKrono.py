@@ -158,44 +158,20 @@ class AppKrono:
             self.bd.insertion_frappe(batch_data)
         return
 
-    def setup_mapping(self) -> None:
+    def setup_mapping(self, datas: dict[int:list]) -> None:
         """
-        Procède au mapping des touches.\n
+        Enregistre le mapping des touches.\n
         Notifications dans le logger.
         Returns:
             None
         """
-        azerty_layout = [
-            ['Echap', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'],
-            ['²', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ')', '=', 'Retour'],
-            ['Tab', 'a', 'z', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '^', '$', 'Entrer'],
-            ['Verr.maj', 'q', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'ù', '*'],
-            ['Shift', '<', 'w', 'x', 'c', 'v', 'b', 'n', ',', ';', ':', '!', 'ShiftG'],
-            ['Ctrl', 'Win', 'Alt', 'Space', 'AltGr', 'Menu'],
-            ['Haut', 'Bas', 'Gauche', 'Droite']
-        ]
-
-        self.mapping = {}
-
-        print("Touche par touche, appuie sur les touches suivantes dans l'ordre affiché.")
-        time.sleep(3)
-
-        for row_idx, row in enumerate(azerty_layout):
-            for col_idx, label in enumerate(row):
-                while True:
-                    print(f"Appuie sur : {label} (ligne {row_idx}, col {col_idx})")
-                    event = keyboard.read_event()
-                    if event.event_type == 'down':
-                        self.mapping[event.scan_code] = [label, row_idx, col_idx]
-                        print(
-                            f"Capturé : scan_code={event.scan_code}, symbole={label}, position=({row_idx}, {col_idx})\n")
-                        break
-
-        print("\nMapping terminé ! \n")
-        print(self.mapping)
-        self.logger.info("Mapping fait, envoie des données dans la bd.")
-        self.bd.enregistrement_mapping(self.mapping)
-        time.sleep(3)
+        try:
+            self.mapping = datas
+            self.logger.info("Mapping affecté.")
+            self.bd.enregistrement_mapping(self.mapping)
+            self.logger.info("Enregistrement mapping fait.")
+        except Exception as e:
+            self.logger.error(f"Erreur dans l'enregistrement du mapping : {e}")
         return
 
     def doit_etre_mapper(self) -> bool:
@@ -212,21 +188,6 @@ class AppKrono:
         else:
             self.mapping = {t[0]: list(t[1:]) for t in result}
             return False
-
-    def faire_mapping(self) -> None:
-        """
-        Gestion du mapping : vérification du besoin de mapping et le fait si besoin.\n
-        Notifications dans le logger.
-        Returns:
-            None
-        """
-        if self.doit_etre_mapper():
-            self.setup_mapping()
-            self.logger.info("Mapping terminé.")
-            return
-        else:
-            self.logger.info("Mapping déjà fait.")
-            return
 
     def setup_session(self, info: str, jeu: str) -> None:
         """

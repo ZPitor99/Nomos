@@ -13,12 +13,6 @@ selection_data_enregistrement: |
   WHERE f.id_session = ?
   ORDER BY f.horodatage
 
-selection_clavier_2d: |
-  SELECT COUNT(*) AS nb_appui, representation, x, y 
-  FROM frappe f JOIN touche t 
-  WHERE f.code = t.code AND f.id_session = ? 
-  GROUP BY f.code
-
 selection_table_ecoute_session: |
   SELECT info, id_session, fin, id_jeu 
   FROM session
@@ -28,6 +22,11 @@ selection_liste_jeu: |
   SELECT nom
   FROM jeu
   ORDER BY nom
+
+selection_liste_touche_nom: |
+  SELECT representation
+  FROM touche
+  ORDER BY representation
 
 selection_clavier2d: |
   SELECT COUNT(*) nb_f, frappe.code, representation, x, y

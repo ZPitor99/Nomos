@@ -142,7 +142,7 @@ class GestionSqlite:
         """
         return self.ouvert
 
-    def ajout_jeu(self, nom: str, description: str, touche1: int, touche2: int, touche3: int, touche4: int) -> bool:
+    def ajout_jeu(self, nom: str, description: str, touche1: str, touche2: str, touche3: str, touche4: str) -> bool:
         """
         Ajoute le jeu dans la table jeu.\n
         Renvoie True si l'action, c’est bien déroulée, False sinon.\n
@@ -150,10 +150,10 @@ class GestionSqlite:
         Args:
             nom (str): Nom du jeu.
             description (str): Description du jeu.
-            touche1 (int): Nom du touche1.
-            touche2 (int): Nom du touche2.
-            touche3 (int): Nom du touche3.
-            touche4 (int): Nom du touche4.
+            touche1 (str): Nom du touche1.
+            touche2 (str): Nom du touche2.
+            touche3 (str): Nom du touche3.
+            touche4 (str): Nom du touche4.
 
         Returns:
             None
@@ -474,6 +474,9 @@ class GestionSqlite:
 
         with self.lock:
             try:
+                self.cursor.execute(
+                    self.commande_delete["suppression_touche"]
+                )
                 self.cursor.executemany(
                     self.commande_insert["insertion_touche"],
                     data,
@@ -486,6 +489,30 @@ class GestionSqlite:
                 self.logger.error(f"Erreur d'insertion de touche : {e}")
                 self.connection.rollback()
         return
+
+    def select_touche_mappe(self) -> list[str]:
+        """
+        Donne le nom des touches mappées
+        Returns:
+            list[str]: liste de str qui représente les touches.
+        """
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            return []
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select["selection_liste_touche_nom"]
+                )
+                result = self.cursor.fetchall()
+                self.logger.info(f"Selection de {len(result)} touches.")
+                for handler in self.logger.handlers[:]:
+                    handler.flush()
+                return [elem[0] for elem in result]
+            except Exception as e:
+                self.logger.error(f"Erreur de la selection de touche : {e}")
+        return []
+
 
     def data_enregistrement(self, id_session: int) -> list[Enregistrement]:
         """

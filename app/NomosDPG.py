@@ -280,7 +280,7 @@ class EcouteWindow(BebeWindow):
                                     dpg.add_text(elem[0])
                                     if elem[1]:
                                         dpg.add_combo(fit_width=True, tag=elem[2],
-                                                      items=sorted(list(self.data["dict_rep_code"].keys())))
+                                                      items=self.data["list_nom_touches"])
                                     else:
                                         dpg.add_input_text(width=200, tag=elem[2])
                         dpg.add_spacer(height=15)
@@ -317,12 +317,7 @@ class EcouteWindow(BebeWindow):
             None
         """
         self.data["ecoute_session_table"] = self.krono.bd.select_ecoute_session()
-        data_map = self.krono.mapping
-        if data_map:
-            data_map = {""}
-        data_map = data_map.items()
-        self.data["dict_rep_code"] = {v: k for k, v in
-                                      {cle: valeur[0] for cle, valeur in data_map}.items()}
+        self.data["list_nom_touches"] = self.krono.bd.select_touche_mappe()
         self.data["liste_jeu"] = [s[0] for s in self.krono.bd.select_list_jeu()]
         return
 
@@ -352,10 +347,10 @@ class EcouteWindow(BebeWindow):
         try:
             val1 = dpg.get_value("champ_jeu1")
             val2 = dpg.get_value("champ_jeu2")
-            val3 = self.data["dict_rep_code"][dpg.get_value("champ_jeu3")]
-            val4 = self.data["dict_rep_code"][dpg.get_value("champ_jeu4")]
-            val5 = self.data["dict_rep_code"][dpg.get_value("champ_jeu5")]
-            val6 = self.data["dict_rep_code"][dpg.get_value("champ_jeu6")]
+            val3 = dpg.get_value("champ_jeu3")
+            val4 = dpg.get_value("champ_jeu4")
+            val5 = dpg.get_value("champ_jeu5")
+            val6 = dpg.get_value("champ_jeu6")
             if any([v is None or v == "" for v in [val1, val2, val3, val4, val5, val6]]):
                 self.popup_creer(3)
             else:
@@ -377,7 +372,7 @@ class EcouteWindow(BebeWindow):
             valjeu = dpg.get_value("champ_jeu")
             valnom = dpg.get_value("champ_nom")
 
-            if valjeu or valnom or valnom == "" or valjeu == "":
+            if not valjeu or not valnom or valnom == "" or valjeu == "":
                 self.popup_creer(3)
             else:
                 for elem in self.item_activation:
@@ -436,7 +431,8 @@ class Configuration(BebeWindow):
             ['Ctrl', 'Win', 'Alt', 'Espace', 'AltGr', 'Menu'],
             ['Haut', 'Bas', 'Gauche', 'Droite']
         ]
-        self.mapping_data = {}  # {scan_code: (représentation, x, y)}
+        self.krono = krono_instance
+        self.mapping_data = {}  # {scan_code: [représentation, x, y]}
         self.ligne_courante = 0
         self.colonne_courante = 0
         self.is_mapping = False
@@ -596,7 +592,7 @@ class Configuration(BebeWindow):
                             touche_mapper += 1
                             break
 
-                        self.mapping_data[scan_code] = (key_label, col_idx, row_idx)
+                        self.mapping_data[scan_code] = [key_label, col_idx, row_idx]
                         self._log_message(f"{key_label}: scan_code: {scan_code}, position: ({col_idx}, {row_idx})")
 
                         touche_mapper += 1
@@ -663,8 +659,8 @@ class Configuration(BebeWindow):
 
         self._log_message(f"Mapping terminé! {mapped_keys} touches configurées sur {total_keys}")
         self._log_message("Données prêtes pour sauvegarde en base de données")
-
-        # FAIRE ENREGISTER DANS BD
+        print(self.mapping_data)
+        self.krono.setup_mapping(self.mapping_data)
         return
 
     def _log_message(self, message) -> None:
