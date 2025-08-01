@@ -188,6 +188,11 @@ class AccueilWindow(BebeWindow):
         Création de l'instance
         """
         super().__init__("Accueil", krono_instance)
+        self.info_acc = {
+            "nombre_session" : 0,
+            "temps_total" : 0,
+            "session_recente" : ""
+        }
         return
 
     def _naissance(self) -> None:
@@ -198,6 +203,7 @@ class AccueilWindow(BebeWindow):
         Returns:
             None
         """
+        self.set_donnees()
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
             dpg.add_text("Bienvenue dans Nomos !")
             dpg.add_separator()
@@ -217,14 +223,27 @@ class AccueilWindow(BebeWindow):
                 with dpg.child_window(width=-1, height=200):
                     dpg.add_text("Informations")
                     dpg.add_separator()
-                    dpg.add_text("Dernière écoute : Aucune")
-                    dpg.add_text("Sessions totales : 0")
-                    dpg.add_text("Temps total : 0h 0m")
+                    dpg.add_text(f"Dernière écoute : {self.info_acc['session_recente']}")
+                    dpg.add_text(f"Sessions totales : {self.info_acc['nombre_session']}")
+                    dpg.add_text(f"Temps total : {unix_to_time(self.info_acc['temps_total'], True)}")
         return
 
     def get_main_window(self):
         """Méthode helper pour accéder à la fenêtre principale"""
         return dpg.get_item_user_data("main_win") if dpg.does_item_exist("main_win") else None
+
+    def actualiser_donnees(self):
+        self.set_donnees()
+        if dpg.does_item_exist(self.winID):
+            dpg.delete_item(self.winID)
+
+        self.vivante = False
+        self.cree()
+
+        return
+
+    def set_donnees(self):
+        self.info_acc = self.krono.info_accueil()
 
 
 class EcouteWindow(BebeWindow):

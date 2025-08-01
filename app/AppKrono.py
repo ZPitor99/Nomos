@@ -1,3 +1,5 @@
+from typing import Any
+
 import keyboard
 import time
 from datetime import datetime
@@ -211,6 +213,19 @@ class AppKrono:
             self.logger.info("Horaire fin session changé.")
         except Exception as e:
             self.logger.error(f"Problème horaire fin : {e}.")
+
+    def info_accueil(self) -> dict[str, Any]:
+        info = {
+            "nombre_session" : None,
+            "temps_total" : None,
+            "session_recente" : None
+        }
+        temp = self.bd.select_info_accueil()
+        if temp:
+            info["nombre_session"] = temp[0][0]
+            info["temps_total"] = temp[0][0]
+            info["session_recente"] = temp[1] if temp[1] != [] else "Aucune"
+        return info
 
     def start(self, info_session: str, jeu_session: str) -> None:
         """

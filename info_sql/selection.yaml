@@ -33,3 +33,12 @@ selection_clavier2d: |
   FROM frappe, touche
   WHERE frappe.code = touche.code AND id_session = ?
   GROUP BY frappe.code
+
+selection_menu_info1: |
+  SELECT COUNT(*), SUM(fin-id_session)
+  FROM session
+
+selection_menu_info2: |
+  SELECT info
+  FROM session
+  WHERE id_session = (SELECT max(id_session) FROM session)

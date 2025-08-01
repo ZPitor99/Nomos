@@ -592,6 +592,27 @@ class GestionSqlite:
                 self.logger.error(f"Erreur lors de la selection pour clavier 2D: {e}")
         return []
 
+    def select_info_accueil(self) -> tuple | None:
+        if not self.est_ouvert():
+            self.logger.error("Tentative de selection sur une connexion fermée")
+            return None
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select["selection_menu_info1"],
+                )
+                res1 = self.cursor.fetchall()
+                res1 = res1[0]
+                self.cursor.execute(
+                    self.commande_select["selection_menu_info2"],
+                )
+                res2 = self.cursor.fetchall()
+                self.logger.info(f"Selection avec succes dans session")
+                return res1, res2
+            except Exception as e:
+                self.logger.error(f"Erreur lors de selection pour info accueil : {e}")
+        return None
+
     def test(self):
         """
         Méthode de test pour vérifier la connexion
