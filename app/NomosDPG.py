@@ -8,8 +8,6 @@ from typing import Union
 
 import keyboard
 
-ctypes.windll.shcore.SetProcessDpiAwareness(2)
-
 
 class NomosDPG:
     """
@@ -32,6 +30,7 @@ class NomosDPG:
         """
         Lance l'application graphique.
         """
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
         dpg.create_context()
 
         try:
