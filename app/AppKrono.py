@@ -99,7 +99,7 @@ class AppKrono:
                 if isinstance(handler, FlushableRotatingFileHandler):
                     handler.close()
                     self.logger.removeHandler(handler)
-        except Exception as e:
+        except Exception:
             pass
         return
 
@@ -160,7 +160,7 @@ class AppKrono:
             self.bd.insertion_frappe(batch_data)
         return
 
-    def setup_mapping(self, datas: dict[int:list]) -> None:
+    def setup_mapping(self, datas) -> None:
         """
         Enregistre le mapping des touches.\n
         Notifications dans le logger.
@@ -223,7 +223,7 @@ class AppKrono:
         temp = self.bd.select_info_accueil()
         if temp:
             info["nombre_session"] = temp[0][0]
-            info["temps_total"] = temp[0][0]
+            info["temps_total"] = temp[0][1]
             info["session_recente"] = temp[1] if temp[1] != [] else "Aucune"
         return info
 
@@ -257,15 +257,15 @@ class AppKrono:
 
 
 # Empecher plusieurs lancements
-lock_path = os.path.join(os.path.expanduser("~"), ".Nomos.lock")
-lock = FileLock(lock_path)
-
-try:
-    with lock:
-        if __name__ == "__main__":
-            en_cour = AppKrono()
-            en_cour.start()
-            en_cour.fin()
-except Timeout:
-    print("L'application est déjà en cours d'exécution.")
-    sys.exit(1)
+# lock_path = os.path.join(os.path.expanduser("~"), ".Nomos.lock")
+# lock = FileLock(lock_path)
+#
+# try:
+#     with lock:
+#         if __name__ == "__main__":
+#             en_cour = AppKrono()
+#             en_cour.start()
+#             en_cour.fin()
+# except Timeout:
+#     print("L'application est déjà en cours d'exécution.")
+#     sys.exit(1)

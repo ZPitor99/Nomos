@@ -603,11 +603,13 @@ class GestionSqlite:
                 )
                 res1 = self.cursor.fetchall()
                 res1 = res1[0]
+                print(res1)
                 self.cursor.execute(
                     self.commande_select["selection_menu_info2"],
                 )
                 res2 = self.cursor.fetchall()
                 self.logger.info(f"Selection avec succes dans session")
+                print(res2)
                 return res1, res2
             except Exception as e:
                 self.logger.error(f"Erreur lors de selection pour info accueil : {e}")

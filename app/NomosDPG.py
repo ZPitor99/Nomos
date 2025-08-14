@@ -223,9 +223,9 @@ class AccueilWindow(BebeWindow):
                 with dpg.child_window(width=-1, height=200):
                     dpg.add_text("Informations")
                     dpg.add_separator()
-                    dpg.add_text(f"Dernière écoute : {self.info_acc['session_recente']}")
-                    dpg.add_text(f"Sessions totales : {self.info_acc['nombre_session']}")
-                    dpg.add_text(f"Temps total : {unix_to_time(self.info_acc['temps_total'], True)}")
+                    dpg.add_text(f"Nom de la dernière écoute : {self.info_acc['session_recente']}")
+                    dpg.add_text(f"Nombre de sessions totales : {self.info_acc['nombre_session']}")
+                    dpg.add_text(f"Temps total en enregistrement: {unix_to_time(self.info_acc['temps_total'], True)}")
         return
 
     def get_main_window(self):
@@ -244,7 +244,13 @@ class AccueilWindow(BebeWindow):
 
     def set_donnees(self):
         self.info_acc = self.krono.info_accueil()
+        self.info_acc['session_recente'] = self.tuple_net(self.info_acc['session_recente'])
 
+    @staticmethod
+    def tuple_net(t: tuple):
+        while (isinstance(t, tuple) or isinstance(t, list)) and len(t) == 1:
+            t = t[0]
+        return t
 
 class EcouteWindow(BebeWindow):
     """
