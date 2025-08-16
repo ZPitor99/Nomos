@@ -335,8 +335,8 @@ class GestionSqlite:
                 if isinstance(handler, FlushableRotatingFileHandler) or isinstance(handler, RotatingFileHandler):
                     handler.close()
                     self.logger.removeHandler(handler)
-        except Exception as e:
-            pass
+        except Exception:
+            raise "Erreur Fermeture logger"
         return
 
     def insertion_touche(self, liste_touches: list[tuple[int, str, int, int]]) -> None:
@@ -428,6 +428,24 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
+    def insertion_apm(self, result_apm:list[Any]) -> None:
+        if not self.est_ouvert():
+            self.logger.error("Tentative d'insertion sur une connexion fermée")
+            return
+
+        with self.lock:
+            try:
+                self.cursor.executemany(
+                    self.commande_insert["insertion_apm"],
+                    result_apm,
+                )
+                self.connection.commit()
+                self.logger.info(f"Insertion des apm dans la table")
+            except Exception as e:
+                self.logger.error(f"Erreur lors d'insertion dans les apm: {e}")
+                self.connection.rollback()
+        return
+
     def modification_fin_session(self, horaire: int, session_courante: int) -> None:
         """
         Modifie la session courante pour donner des informations suite à la fin de cette dernière.\n
@@ -456,7 +474,7 @@ class GestionSqlite:
                 self.connection.rollback()
         return
 
-    def enregistrement_mapping(self, mapping: dict[int:list]) -> None:
+    def enregistrement_mapping(self, mapping: dict) -> None:
         """
         Rentre dans la table touche le mapping fait pas l'utilisateur.\n
         Notifications dans le logger.
@@ -539,7 +557,7 @@ class GestionSqlite:
                     for row in self.cursor.fetchall()
                 ]
 
-                self.logger.info(f"Chargé {len(liste_enregistrement)} frappes")
+                self.logger.info(f"Chargé {len(liste_enregistrement)} frappes en enregistrement class")
                 return liste_enregistrement
             except Exception as e:
                 self.logger.error(f"Erreur lors de la selection de data_enregistrement : {e}")
@@ -603,13 +621,11 @@ class GestionSqlite:
                 )
                 res1 = self.cursor.fetchall()
                 res1 = res1[0]
-                print(res1)
                 self.cursor.execute(
                     self.commande_select["selection_menu_info2"],
                 )
                 res2 = self.cursor.fetchall()
                 self.logger.info(f"Selection avec succes dans session")
-                print(res2)
                 return res1, res2
             except Exception as e:
                 self.logger.error(f"Erreur lors de selection pour info accueil : {e}")
@@ -633,42 +649,3 @@ class GestionSqlite:
             except Exception as e:
                 self.logger.error(f"Erreur lors du test : {e}")
                 return None
-
-# if __name__ == "__main__":
-#     gestSQL = None
-#     try:
-#         gestSQL = GestionSqlite("mesures.db")
-#         print(gestSQL)
-#
-#         print("=== Test jeu")
-#         gestSQL.ajout_jeu("lol", "", 2, 3, 4, 5)
-#         print(gestSQL.select_all("jeu"))
-#         gestSQL.delete_all("jeu")
-#         print(gestSQL.select_all("jeu"))
-#
-#         print("=== Test touche")
-#         gestSQL.insertion_touche([(10, "a", 1, 1), (20, "b", 2, 2), (30, "c", 3, 3)])
-#         print(gestSQL.select_all("touche"))
-#
-#         print("=== Test frappe")
-#         gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 25, 10), (int(datetime.now().timestamp()), 25, 10),
-#                                   (int(datetime.now().timestamp()), 25, 30)])
-#         gestSQL.insertion_frappe([(int(datetime.now().timestamp()), 26, 50), (int(datetime.now().timestamp()), 26, 10),
-#                                   (int(datetime.now().timestamp()), 26, 10)])
-#
-#         print(gestSQL.test())
-#
-#         print(gestSQL.select_ecoute_session())
-#
-#         print(gestSQL.select_all("frappe"))
-#         gestSQL.delete_all("frappe")
-#         print(gestSQL.select_all("frappe"))
-#         gestSQL.delete_all("touche")
-#         print(gestSQL.select_all("touche"))
-#         gestSQL.fin()
-#
-#     except Exception as e:
-#         print(f"Erreur dans le programme principal : {e}")
-#     finally:
-#         if gestSQL:
-#             gestSQL.fin()

@@ -102,7 +102,7 @@ class AnalyseEnregistrement:
 
         if not intervals:
             print("Aucun intervalle valide trouvé")
-            return None
+            return {}
 
         avg_interval = statistics.mean(intervals)
         median_interval = statistics.median(intervals)

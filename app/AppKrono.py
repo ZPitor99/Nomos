@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any
 
 import keyboard
@@ -249,23 +250,60 @@ class AppKrono:
         self.session_fin()
         self.logger.info("Fin enregistrement de touche.")
 
-        self.logger.info("Fermeture.")
+        self.logger.info("Vider la queue.")
         self.enregistre_dans_bd()
         self.logger.info("Fin.")
         self.en_enregistrement = False
+        self.enregistrer_apm(self.calculer_apm())
         return
 
+    def calculer_apm(self) -> list[Any]:
+        self.logger.info("Début du calcul des apm.")
+        resultats_apm = []
 
-# Empecher plusieurs lancements
-# lock_path = os.path.join(os.path.expanduser("~"), ".Nomos.lock")
-# lock = FileLock(lock_path)
-#
-# try:
-#     with lock:
-#         if __name__ == "__main__":
-#             en_cour = AppKrono()
-#             en_cour.start()
-#             en_cour.fin()
-# except Timeout:
-#     print("L'application est déjà en cours d'exécution.")
-#     sys.exit(1)
+        data_enr = self.bd.data_enregistrement(self.identifiant_session)
+        if not data_enr:
+            return resultats_apm
+
+        data_enr.sort(key=lambda x: x.timestamp)
+
+        timestamp_debut = int(data_enr[0].timestamp)
+
+        frappes_par_minute = defaultdict(int)
+        for enr in data_enr:
+            num_minute = (int(enr.timestamp) - timestamp_debut) //60
+            frappes_par_minute[num_minute] += 1
+
+
+        derniere_minute = int(max(frappes_par_minute.keys()) if frappes_par_minute else 0)
+        for num_min in range(0, derniere_minute + 1):
+            apm_brut = frappes_par_minute[num_min]
+
+            minute_actuelle = frappes_par_minute[num_min]
+
+            if num_min > 0:
+                minute_avant = frappes_par_minute[num_min-1]
+            else:
+                minute_avant = minute_actuelle
+
+            if num_min < derniere_minute:
+                minute_suivante = frappes_par_minute[num_min+1]
+            else:
+                minute_suivante = minute_actuelle
+
+            apm_mobile = (minute_avant + minute_actuelle + minute_suivante) / 3.0
+
+            resultats_apm.append((
+                num_min,
+                self.identifiant_session,
+                apm_brut,
+                round(apm_mobile, 2)
+            ))
+        self.logger.info("Fin du calcul des apm.")
+        return resultats_apm
+
+    def enregistrer_apm(self, resultats_apm:list[Any]) -> None:
+        self.logger.info("Enregistrement apm commence.")
+        self.bd.insertion_apm(resultats_apm)
+        self.logger.info("Enregistrement apm terminé.")
+        return

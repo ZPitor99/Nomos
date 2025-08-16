@@ -30,7 +30,13 @@ class NomosDPG:
         """
         Lance l'application graphique.
         """
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except (AttributeError, OSError):
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except (AttributeError, OSError):
+                pass
         dpg.create_context()
 
         try:
@@ -245,6 +251,8 @@ class AccueilWindow(BebeWindow):
     def set_donnees(self):
         self.info_acc = self.krono.info_accueil()
         self.info_acc['session_recente'] = self.tuple_net(self.info_acc['session_recente'])
+        self.info_acc['temps_total'] = self.info_acc['temps_total'] if self.info_acc['temps_total'] else 0
+        print(self.info_acc)
 
     @staticmethod
     def tuple_net(t: tuple):
@@ -683,7 +691,6 @@ class Configuration(BebeWindow):
 
         self._log_message(f"Mapping terminé! {mapped_keys} touches configurées sur {total_keys}")
         self._log_message("Données prêtes pour sauvegarde en base de données")
-        print(self.mapping_data)
         self.krono.setup_mapping(self.mapping_data)
         return
 

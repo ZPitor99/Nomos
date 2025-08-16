@@ -17,3 +17,7 @@ insertion_touche: |
 insertion_frappe: |
   INSERT INTO frappe (horodatage, id_session, code)
   VALUES (?,?,?)
+
+insertion_apm: |
+  INSERT INTO apm (num_min, id_session, apm_brut, apm_mobile)
+  VALUES (?,?,?,?)
