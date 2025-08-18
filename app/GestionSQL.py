@@ -631,6 +631,40 @@ class GestionSqlite:
                 self.logger.error(f"Erreur lors de selection pour info accueil : {e}")
         return None
 
+    def select_apm_graphique(self, id_session: int) -> list[Any] | None:
+        if not self.est_ouvert():
+            self.logger.error("Tentative de selection sur une connexion fermée")
+            return None
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select["selection_apm_session"],
+                    (id_session,),
+                )
+                res = self.cursor.fetchall()
+                print(res)
+                self.logger.info(f"Selection avec succes dans session")
+                return res
+            except Exception as e:
+                self.logger.error(f"Erreur lors de selection pour apm graphique : {e}")
+        return None
+
+    def select_session_choix(self) -> list[Any] | None:
+        if not self.est_ouvert():
+            self.logger.error("Tentative de selection sur une connexion fermée")
+            return None
+        with self.lock:
+            try:
+                self.cursor.execute(
+                    self.commande_select["selection_session_choix"],
+                )
+                res = self.cursor.fetchall()
+                self.logger.info(f"Selection avec succes dans session")
+                return res
+            except Exception as e:
+                self.logger.error(f"Erreur lors de selection pour la liste des sessions : {e}")
+        return None
+
     def test(self):
         """
         Méthode de test pour vérifier la connexion

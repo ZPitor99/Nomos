@@ -76,6 +76,7 @@ class MainWin:
         self.gestionnaire_windows.nouvelle_window("Ecoute", EcouteWindow(self.krono))
         self.gestionnaire_windows.nouvelle_window("Conf", Configuration(self.krono))
         self.gestionnaire_windows.nouvelle_window("Clavier2D", Clavier2DWindow(self.krono))
+        self.gestionnaire_windows.nouvelle_window("Statistique", Statistiques(self.krono))
 
         self.fait_naitre_main_window()
         return
@@ -100,7 +101,8 @@ class MainWin:
                                       callback=lambda: self.gestionnaire_windows.afficher_window("Conf"))
 
                 with dpg.menu(label="Stats"):
-                    dpg.add_menu_item(label="Statistique")
+                    dpg.add_menu_item(label="Statistique",
+                                      callback=lambda: self.gestionnaire_windows.afficher_window("Statistique"))
                     dpg.add_menu_item(label="Clavier 2D",
                                       callback=lambda: self.gestionnaire_windows.afficher_window("Clavier2D"))
 
@@ -184,6 +186,11 @@ class BebeWindow:
         pass
 
 
+def get_main_window():
+    """Méthode helper pour accéder à la fenêtre principale"""
+    return dpg.get_item_user_data("main_win") if dpg.does_item_exist("main_win") else None
+
+
 class AccueilWindow(BebeWindow):
     """
     Class de la fenêtre d'accueil de l'interface.
@@ -219,7 +226,7 @@ class AccueilWindow(BebeWindow):
                     dpg.add_text("Actions rapides")
                     dpg.add_separator()
                     dpg.add_button(label="Faire une écoute", width=-1,
-                                   callback=lambda: self.get_main_window().gestionnaire_windows.afficher_window(
+                                   callback=lambda: get_main_window().gestionnaire_windows.afficher_window(
                                        "Ecoute"))
                     dpg.add_button(label="Voir statistiques", width=-1)
                     dpg.add_button(label="Configuration", width=-1)
@@ -234,10 +241,6 @@ class AccueilWindow(BebeWindow):
                     dpg.add_text(f"Temps total en enregistrement: {unix_to_time(self.info_acc['temps_total'], True)}")
         return
 
-    def get_main_window(self):
-        """Méthode helper pour accéder à la fenêtre principale"""
-        return dpg.get_item_user_data("main_win") if dpg.does_item_exist("main_win") else None
-
     def actualiser_donnees(self):
         self.set_donnees()
         if dpg.does_item_exist(self.winID):
@@ -245,14 +248,13 @@ class AccueilWindow(BebeWindow):
 
         self.vivante = False
         self.cree()
-
         return
 
     def set_donnees(self):
         self.info_acc = self.krono.info_accueil()
         self.info_acc['session_recente'] = self.tuple_net(self.info_acc['session_recente'])
         self.info_acc['temps_total'] = self.info_acc['temps_total'] if self.info_acc['temps_total'] else 0
-        print(self.info_acc)
+        return
 
     @staticmethod
     def tuple_net(t: tuple):
@@ -423,15 +425,15 @@ class EcouteWindow(BebeWindow):
         self.actualiser_donnees()
         return
 
-    def popup_creer(self, type: int = 0) -> None:
+    def popup_creer(self, type_err: int = 0) -> None:
 
-        if type == 1:
+        if type_err == 1:
             information = "Fin de la session"
             x = 280
-        elif type == 2:
+        elif type_err == 2:
             information = "Jeu ajouté avec succès"
             x = 350
-        elif type == 3:
+        elif type_err == 3:
             information = "Champ incorrect"
             x = 300
         else:
@@ -454,14 +456,32 @@ class Configuration(BebeWindow):
 
     def __init__(self, krono_instance) -> None:
         super().__init__("Conf", krono_instance)
-        self.azerty_layout = [
-            ['Echap', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'],
-            ['²', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ')', '=', 'Retour'],
-            ['Tab', 'A', 'Z', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '^', '$', 'Entrée'],
-            ['Verr.Maj', 'Q', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'Ù', '*'],
-            ['Shift', '<', 'W', 'X', 'C', 'V', 'B', 'N', ',', ';', ':', '!', 'Shift'],
-            ['Ctrl', 'Win', 'Alt', 'Espace', 'AltGr', 'Menu'],
-            ['Haut', 'Bas', 'Gauche', 'Droite']
+        self.azerty_layout_legacy = [
+            ["Echap", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"],
+            ["²", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ")", "=", "Retour"],
+            ["Tab", "A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "^", "$", "Entrée"],
+            ["Verr.Maj", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "%", "*"],
+            ["Shift", "<", "W", "X", "C", "V", "B", "N", ",", ";", ":", "!", "ShiftG"],
+            ["Ctrl", "Win", "Alt", "Espace", "AltGr", "Menu"],
+            ["Haut", "Bas", "Gauche", "Droite"]
+        ]
+        self.azerty_layout_standard = [
+            ["Echap", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"],
+            ["@", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "'", "^", "Retour"],
+            ["Tab", "A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "-", "+", "Enter"],
+            ["Verr.Maj", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "/", "*"],
+            ["Shift", "<", "W", "X", "C", "V", "B", "N", ",", ":", ";", "ShiftG"],
+            ["Ctrl", "Win", "Alt", "Espace", "AltGr", "Menu"],
+            ["Haut", "Bas", "Gauche", "Droite"]
+        ]
+        self.qwerty_layout_standard = [
+            ["Echap", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"],
+            ["²", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="],
+            ["Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]"],
+            ["Caps", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'"],
+            ["Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "ShiftG"],
+            ["Ctrl", "Win", "Alt", "Espace", "AltGr", "Menu"],
+            ["Top", "Bot", "Left", "Right"]
         ]
         self.krono = krono_instance
         self.mapping_data = {}  # {scan_code: [représentation, x, y]}
@@ -579,12 +599,12 @@ class Configuration(BebeWindow):
 
     def _boucle_capture(self) -> None:
         """Boucle principale du mapping dans un thread séparé"""
-        total_keys = sum(len(row) for row in self.azerty_layout)
+        total_keys = sum(len(row) for row in self.azerty_layout_legacy)
         touche_mapper = 0
 
         self._log_message("Début du mapping des touches...")
 
-        for row_idx, row in enumerate(self.azerty_layout):
+        for row_idx, row in enumerate(self.azerty_layout_legacy):
             if not self.is_mapping:
                 break
 
@@ -630,7 +650,6 @@ class Configuration(BebeWindow):
                         touche_mapper += 1
                         key_captured = True
 
-                    # Pause pour alléger
                     time.sleep(0.05)
 
                 time.sleep(0.2)
@@ -716,9 +735,74 @@ class Configuration(BebeWindow):
         return self.mapping_data.copy()
 
 
+class Statistiques(BebeWindow):
+    """
+    Class pour afficher les statistiques d'une session qui sera sélectionnée
+    """
+
+    def __init__(self, krono_instance) -> None:
+        super().__init__("Statistiques", krono_instance)
+        self.krono = krono_instance
+        self.data_apm = {}
+        self.data_session = {}
+        self.data_session_list = [] # b
+        self.session_keys = []  # a
+        return
+
+    def _naissance(self) -> None:
+        self.set_donnees()
+        with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
+            dpg.add_text("Statistiques")
+            dpg.add_separator()
+
+            with dpg.group(horizontal=True):
+                with dpg.group():
+                    dpg.add_text("Session")
+                    dpg.add_combo(
+                        tag="choix_session",
+                        items=self.data_session_list,
+                        width=300
+                    )
+                    dpg.add_text("Date: Aucune sélection", tag="date_label")
+                    dpg.add_spacer()
+                    dpg.add_text("Stats générales")
+
+                with dpg.group():
+                    dpg.add_text("Touches du jeu")
+
+                with dpg.group():
+                    dpg.add_text("Latences des appuis")
+
+
+    def set_donnees(self) -> None:
+        """
+        Applique au champ `self.data` les données que la fenêtre doit afficher.
+        Appeler la méthode quand un changement de données est fait pour mettre à jour les données en mémoire.
+        Returns:
+            None
+        """
+        temp = self.krono.bd.select_session_choix()
+        print(temp)
+        self.data_session = {cle: valeur for cle, valeur in temp}
+
+        # Maintenir l'ordre : convertir en listes ordonnées
+        session_items = list(self.data_session.items())
+        self.session_keys = [item[0] for item in session_items]  # Les clés (a)
+        self.data_session_list = [item[1] for item in session_items]  # Les valeurs (b)
+        return
+
+    def actualiser_donnees(self) -> None:
+        self.set_donnees()
+        if dpg.does_item_exist(self.winID):
+            dpg.delete_item(self.winID)
+
+        self.vivante = False
+        self.cree()
+        return
+
 class Clavier2DWindow(BebeWindow):
     """
-    Class pour visualiser sur un clavier généré le nombre d'appuis par touche par coloration de ce dernier.
+    Class pour visualiser sur un clavier généré le nombre d’appuis par touche par coloration de ce dernier.
     """
 
     def __init__(self, krono_instance) -> None:
@@ -726,18 +810,24 @@ class Clavier2DWindow(BebeWindow):
         Création de l'instance.
         """
         super().__init__("Clavier2D", krono_instance)
+        self.krono = krono_instance
+        self.data_apm = {}
+        self.data_session = {}
+        self.data_session_list = [] # b
+        self.session_keys = []  # a
         return
 
     def _naissance(self) -> None:
         """
         Définit les éléments de la fenêtre Clavier2DWindow.\n
-            - Légende du nombre d'appuis mit en correspondance de la couleur.
-            - Clavier 2D coloré en fonction du nombre d'appuis de la session choisie.
-            - Choix de la session dont on veut visualiser les nombres d'appuis.
+            - Légende du nombre d’appuis mit en correspondance de la couleur.
+            - Clavier 2D coloré en fonction du nombre d’appuis de la session choisie.
+            - Choix de la session dont on veut visualiser les nombres d’appuis.
         Returns:
             None
         """
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
+            self.set_donnees()
             # get_colormap_color(colormap_id, index)
             dpg.add_text("Clavier 2D des appuis")
             dpg.add_separator()
@@ -745,6 +835,44 @@ class Clavier2DWindow(BebeWindow):
             dpg.add_spacer(height=10)
             dpg.add_colormap_scale(label="Répartition", min_scale=0, max_scale=100)
             dpg.bind_colormap(dpg.last_item(), dpg.mvPlotColormap_Hot)
+
+            with dpg.group():
+                dpg.add_listbox(
+                    tag="choix_session_clavier",
+                    items=self.data_session_list,
+                    width=300,
+                    num_items=5
+                )
+
+                dpg.add_text("Date: Aucune sélection", tag="date_session_clavier")
+
+
+
+    def set_donnees(self) -> None:
+        """
+        Applique au champ `self.data` les données que la fenêtre doit afficher.
+        Appeler la méthode quand un changement de données est fait pour mettre à jour les données en mémoire.
+        Returns:
+            None
+        """
+        temp = self.krono.bd.select_session_choix()
+        print(temp)
+        self.data_session = {cle: valeur for cle, valeur in temp}
+
+        # Maintenir l'ordre : convertir en listes ordonnées
+        session_items = list(self.data_session.items())
+        self.session_keys = [item[0] for item in session_items]  # Les clés (a)
+        self.data_session_list = [item[1] for item in session_items]  # Les valeurs (b)
+        return
+
+    def actualiser_donnees(self) -> None:
+        self.set_donnees()
+        if dpg.does_item_exist(self.winID):
+            dpg.delete_item(self.winID)
+
+        self.vivante = False
+        self.cree()
+        return
 
 
 def unix_to_time(horaire: int = 0, retour: bool = True) -> Union[str, tuple[int, int, int]]:
@@ -776,18 +904,20 @@ def unix_to_time(horaire: int = 0, retour: bool = True) -> Union[str, tuple[int,
         return heure, mini, sec
 
 
-def unix_to_date(horaire: int = 0, retour: bool = True) -> Union[str, datetime]:
+def unix_to_date(horaire: int = 0, type_retour: int = 0) -> Union[str, datetime]:
     """
     Transforme un horaire au format Unix au format Jour/Mois/Année Heure:Minutes:Seconde en chaine de character ou
     au format datetime.
     Args :
         horaire (int) : L'horodatage au format Unix.
-        retour (bool) : True pour la chaine de character, False pour le format datetime.
+        type_retour (int) : 0 pour Jour/Mois/Année Heure:Minutes:Second, 1 sans seconde et sinon sous forme de datetime
 
     Returns :
         L'horodatage sous le format en fonction du paramètre retour.
     """
-    if retour:
+    if type_retour == 0:
         return datetime.datetime.fromtimestamp(horaire).strftime("%d/%m/%Y %H:%M:%S")
+    elif type_retour == 1:
+        return datetime.datetime.fromtimestamp(horaire).strftime("%d/%m/%Y %H:%M")
     else:
         return datetime.time

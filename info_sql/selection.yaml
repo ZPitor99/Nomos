@@ -42,3 +42,14 @@ selection_menu_info2: |
   SELECT info
   FROM session
   WHERE id_session = (SELECT max(id_session) FROM session)
+
+selection_apm_session: |
+  SELECT num_min, apm_brut, apm_mobile
+  FROM apm
+  WHERE id_session = ?
+  ORDER BY num_min
+
+selection_session_choix: |
+  SELECT id_session, info
+  FROM session
+  ORDER BY id_session
