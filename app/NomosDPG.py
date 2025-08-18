@@ -743,10 +743,11 @@ class Statistiques(BebeWindow):
     def __init__(self, krono_instance) -> None:
         super().__init__("Statistiques", krono_instance)
         self.krono = krono_instance
-        self.data_apm = {}
+        self.data_apm = []
         self.data_session = {}
-        self.data_session_list = [] # b
-        self.session_keys = []  # a
+        self.data_session_list = []
+        self.correspondance_session_affichage = {}
+        self.combo_val = ""
         return
 
     def _naissance(self) -> None:
@@ -754,25 +755,38 @@ class Statistiques(BebeWindow):
         with dpg.child_window(tag=self.winID, parent=self.parent_id, border=False):
             dpg.add_text("Statistiques")
             dpg.add_separator()
+            with dpg.group(horizontal=False):
+                with dpg.group(horizontal=True):
+                    with dpg.group():
+                        dpg.add_text("Session")
+                        dpg.add_combo(
+                            tag="choix_session",
+                            items=self.data_session_list,
+                            width=400,
+                            callback=self.selectionne_session,
+                            default_value=self.combo_val
+                        )
+                        dpg.add_spacer()
+                        dpg.add_text("Stats générales")
 
-            with dpg.group(horizontal=True):
-                with dpg.group():
-                    dpg.add_text("Session")
-                    dpg.add_combo(
-                        tag="choix_session",
-                        items=self.data_session_list,
-                        width=300
-                    )
-                    dpg.add_text("Date: Aucune sélection", tag="date_label")
-                    dpg.add_spacer()
-                    dpg.add_text("Stats générales")
+                    with dpg.group():
+                        dpg.add_text("Touches du jeu")
 
-                with dpg.group():
-                    dpg.add_text("Touches du jeu")
+                    with dpg.group():
+                        dpg.add_text("Latences des appuis")
 
-                with dpg.group():
-                    dpg.add_text("Latences des appuis")
+                with dpg.plot(label="Action Clavier par Minute", width=-1, height=500, crosshairs=True):
+                    dpg.add_plot_legend()
+                    dpg.add_plot_axis(dpg.mvXAxis, label="Temps (minutes)", auto_fit=True)
+                    with dpg.plot_axis(dpg.mvYAxis, label="Nombre d'appuis (u.a)") as y_axis:
+                        dpg.add_line_series([x[0] for x in self.data_apm], [y[1] for y in self.data_apm], label="APM brut", parent=y_axis)
+                        dpg.add_line_series([x[0] for x in self.data_apm], [y[2] for y in self.data_apm], label="APM mobile", parent=y_axis)
 
+
+    def selectionne_session(self, sender, app_data, user_data) -> None:
+        self.data_apm = self.krono.bd.select_apm_graphique(self.correspondance_session_affichage[app_data])
+        self.combo_val = app_data
+        self.actualiser_donnees()
 
     def set_donnees(self) -> None:
         """
@@ -782,13 +796,12 @@ class Statistiques(BebeWindow):
             None
         """
         temp = self.krono.bd.select_session_choix()
-        print(temp)
         self.data_session = {cle: valeur for cle, valeur in temp}
-
-        # Maintenir l'ordre : convertir en listes ordonnées
-        session_items = list(self.data_session.items())
-        self.session_keys = [item[0] for item in session_items]  # Les clés (a)
-        self.data_session_list = [item[1] for item in session_items]  # Les valeurs (b)
+        self.data_session_list = []
+        for a,b in self.data_session.items():
+            self.data_session_list.append(unix_to_date(a) + "\t" + b)
+            self.correspondance_session_affichage[(unix_to_date(a)) + "\t" + b] = a
+        self.data_session_list.reverse()
         return
 
     def actualiser_donnees(self) -> None:
@@ -811,10 +824,9 @@ class Clavier2DWindow(BebeWindow):
         """
         super().__init__("Clavier2D", krono_instance)
         self.krono = krono_instance
-        self.data_apm = {}
         self.data_session = {}
-        self.data_session_list = [] # b
-        self.session_keys = []  # a
+        self.data_session_list = []
+        self.correspondance_session_affichage = {}
         return
 
     def _naissance(self) -> None:
@@ -856,13 +868,14 @@ class Clavier2DWindow(BebeWindow):
             None
         """
         temp = self.krono.bd.select_session_choix()
-        print(temp)
         self.data_session = {cle: valeur for cle, valeur in temp}
+        self.data_session_list = []
+        for a,b in self.data_session.items():
+            self.data_session_list.append(unix_to_date(a) + "\t" + b)
+            self.correspondance_session_affichage[(unix_to_date()) + "\t" + b] = a
 
-        # Maintenir l'ordre : convertir en listes ordonnées
-        session_items = list(self.data_session.items())
-        self.session_keys = [item[0] for item in session_items]  # Les clés (a)
-        self.data_session_list = [item[1] for item in session_items]  # Les valeurs (b)
+        print(self.data_session_list)
+        print(self.correspondance_session_affichage)
         return
 
     def actualiser_donnees(self) -> None:
