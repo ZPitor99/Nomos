@@ -257,8 +257,17 @@ class AppKrono:
         self.enregistrer_apm(self.calculer_apm())
         return
 
-    def calculer_apm(self) -> list[Any]:
-        self.logger.info("Début du calcul des apm.")
+    def calculer_apm(self, duree_fenetre: int = 60) -> list[Any]:
+        """
+        Calcule l'APM avec fenêtre glissante optimisée et moyennage mobile
+
+        Args:
+            duree_fenetre: Taille de la fenêtre glissante en secondes (défaut: 60s)
+
+        Returns:
+            Liste de tuples (num_minute, identifiant_session, apm_brut, apm_mobile)
+        """
+        self.logger.info("Début du calcul des apm avec fenêtre glissante.")
         resultats_apm = []
 
         data_enr = self.bd.data_enregistrement(self.identifiant_session)
@@ -266,28 +275,52 @@ class AppKrono:
             return resultats_apm
 
         data_enr.sort(key=lambda x: x.timestamp)
-
         timestamp_debut = int(data_enr[0].timestamp)
 
-        frappes_par_minute = defaultdict(int)
-        for enr in data_enr:
-            num_minute = (int(enr.timestamp) - timestamp_debut) //60
-            frappes_par_minute[num_minute] += 1
+        # Calculer l'APM avec fenêtre glissante optimisée pour chaque minute
+        apm_par_minute = defaultdict(float)
+        debut_fenetre = 0
 
+        # Pour chaque enregistrement, calculer l'APM à ce moment
+        for i, enr_actuel in enumerate(data_enr):
+            timestamp_actuel = int(enr_actuel.timestamp)
+            timestamp_limite = timestamp_actuel - duree_fenetre
 
-        derniere_minute = int(max(frappes_par_minute.keys()) if frappes_par_minute else 0)
+            # Avancer le pointeur de début pour exclure les éléments trop anciens
+            while (debut_fenetre < i and
+                   int(data_enr[debut_fenetre].timestamp) < timestamp_limite):
+                debut_fenetre += 1
+
+            # Nombre de frappes dans la fenêtre actuelle
+            frappes_dans_fenetre = i - debut_fenetre + 1
+            apm_instantane = frappes_dans_fenetre * (60.0 / duree_fenetre)
+
+            # Associer cet APM à la minute correspondante
+            num_minute = (timestamp_actuel - timestamp_debut) // 60
+            # Prendre la valeur maximale pour cette minute (plus représentatif)
+            apm_par_minute[num_minute] = max(apm_par_minute[num_minute], apm_instantane)
+
+        # Si aucune donnée calculée, retourner vide
+        if not apm_par_minute:
+            return resultats_apm
+
+        # Construire les résultats avec moyennage mobile
+        derniere_minute = int(max(apm_par_minute.keys()))
+
         for num_min in range(0, derniere_minute + 1):
-            apm_brut = frappes_par_minute[num_min]
+            # APM brut (de la fenêtre glissante)
+            apm_brut = apm_par_minute.get(num_min, 0.0)
 
-            minute_actuelle = frappes_par_minute[num_min]
+            # Calculer le moyennage mobile sur 3 minutes
+            minute_actuelle = apm_par_minute.get(num_min, 0.0)
 
             if num_min > 0:
-                minute_avant = frappes_par_minute[num_min-1]
+                minute_avant = apm_par_minute.get(num_min - 1, 0.0)
             else:
                 minute_avant = minute_actuelle
 
             if num_min < derniere_minute:
-                minute_suivante = frappes_par_minute[num_min+1]
+                minute_suivante = apm_par_minute.get(num_min + 1, 0.0)
             else:
                 minute_suivante = minute_actuelle
 
@@ -296,10 +329,11 @@ class AppKrono:
             resultats_apm.append((
                 num_min,
                 self.identifiant_session,
-                apm_brut,
+                int(round(apm_brut, 0)),
                 round(apm_mobile, 2)
             ))
-        self.logger.info("Fin du calcul des apm.")
+
+        self.logger.info("Fin du calcul des apm avec fenêtre glissante.")
         return resultats_apm
 
     def enregistrer_apm(self, resultats_apm:list[Any]) -> None:

@@ -47,7 +47,7 @@ class NomosDPG:
 
         self.main_win = MainWin(self.krono)
 
-        dpg.create_viewport(title='Nomos', width=1280, height=720)
+        dpg.create_viewport(title='Nomos', width=1600, height=860)
 
         # Chemin vers l'icône (relatif à la racine du projet)
         icon_path = os.path.join(self.project_root, "ressources", "Nomos.ico")
@@ -185,12 +185,6 @@ class BebeWindow:
     def actualiser_donnees(self):
         pass
 
-
-def get_main_window():
-    """Méthode helper pour accéder à la fenêtre principale"""
-    return dpg.get_item_user_data("main_win") if dpg.does_item_exist("main_win") else None
-
-
 class AccueilWindow(BebeWindow):
     """
     Class de la fenêtre d'accueil de l'interface.
@@ -225,9 +219,7 @@ class AccueilWindow(BebeWindow):
                 with dpg.child_window(width=300, height=200):
                     dpg.add_text("Actions rapides")
                     dpg.add_separator()
-                    dpg.add_button(label="Faire une écoute", width=-1,
-                                   callback=lambda: get_main_window().gestionnaire_windows.afficher_window(
-                                       "Ecoute"))
+                    dpg.add_button(label="Faire une écoute", width=-1)
                     dpg.add_button(label="Voir statistiques", width=-1)
                     dpg.add_button(label="Configuration", width=-1)
 
@@ -748,6 +740,13 @@ class Statistiques(BebeWindow):
         self.data_session_list = []
         self.correspondance_session_affichage = {}
         self.combo_val = ""
+
+        self.stat = {
+            "Nombre appui total" : None,
+            "Moyenne/min" : None,
+            "Median/min" : None,
+            "Stat bonus" : None
+        }
         return
 
     def _naissance(self) -> None:
@@ -766,21 +765,70 @@ class Statistiques(BebeWindow):
                             callback=self.selectionne_session,
                             default_value=self.combo_val
                         )
-                        dpg.add_spacer()
+
+                        dpg.add_spacer(height=20)
                         dpg.add_text("Stats générales")
+                        with dpg.table(header_row=False, no_host_extendX=True, context_menu_in_body=True,
+                                       row_background=False, policy=dpg.mvTable_SizingFixedFit, scrollY=False,
+                                       clipper=True, resizable=False, delay_search=True, borders_outerH=False,
+                                       borders_innerV=False, borders_outerV=False, width=-1) as table1:
+                            dpg.add_table_column(label="")
+                            dpg.add_table_column(label="")
 
-                    with dpg.group():
-                        dpg.add_text("Touches du jeu")
+                            champ_generaux = ["Nombre appui total", "Moyenne/min", "Median/min"]
+                            for i in range(len(champ_generaux)):
+                                with dpg.table_row(parent=table1):
+                                    dpg.add_text(champ_generaux[i], bullet=True)
+                                    dpg.add_text("  " + str(self.stat[champ_generaux[i]]) if self.stat[champ_generaux[
+                                        i]] is not None else "  __")
 
-                    with dpg.group():
-                        dpg.add_text("Latences des appuis")
+                    with dpg.plot(label="Action Clavier par Minute", width=-dpg.get_item_width(self.winID) - 15,
+                                  height=500,
+                                  crosshairs=True):
+                        dpg.add_plot_legend(outside=True, horizontal=True)
+                        dpg.add_plot_axis(dpg.mvXAxis, label="Temps (minutes)", auto_fit=True)
+                        with dpg.plot_axis(dpg.mvYAxis, label="Nombre d'appuis (u.a)") as y_axis:
+                            dpg.add_line_series([x[0] for x in self.data_apm], [y[1] for y in self.data_apm],
+                                                label="APM brut", parent=y_axis)
+                            dpg.add_line_series([x[0] for x in self.data_apm], [y[2] for y in self.data_apm],
+                                                label="APM mobile", parent=y_axis)
 
-                with dpg.plot(label="Action Clavier par Minute", width=-1, height=500, crosshairs=True):
-                    dpg.add_plot_legend()
-                    dpg.add_plot_axis(dpg.mvXAxis, label="Temps (minutes)", auto_fit=True)
-                    with dpg.plot_axis(dpg.mvYAxis, label="Nombre d'appuis (u.a)") as y_axis:
-                        dpg.add_line_series([x[0] for x in self.data_apm], [y[1] for y in self.data_apm], label="APM brut", parent=y_axis)
-                        dpg.add_line_series([x[0] for x in self.data_apm], [y[2] for y in self.data_apm], label="APM mobile", parent=y_axis)
+                dpg.add_separator()
+                dpg.add_spacer(height=10)
+
+                with dpg.group():
+                    dpg.add_text("Combinaison de Touches")
+                    with dpg.table(header_row=True, no_host_extendX=True, context_menu_in_body=True,
+                        row_background=False, policy=dpg.mvTable_SizingStretchSame, scrollY=True,
+                        clipper=True, height=230, resizable=False, delay_search=True,borders_innerH=True,
+                        borders_outerH=True,borders_innerV=False, borders_outerV=True, width=500) as tablePatern:
+                        dpg.add_table_column(label="Combinaison", width_fixed=True, init_width_or_weight=250)
+                        dpg.add_table_column(label="Nombre d'utilisation")
+
+                        for i in range(5):
+                            with dpg.table_row(parent=tablePatern):
+                                dpg.add_text(f"Touche{i+1}")
+                                dpg.add_text(f"Val{i + 1}")
+
+                with dpg.group():
+                    dpg.add_text("Spam touche")
+                    with dpg.table(header_row=True, no_host_extendX=True, context_menu_in_body=True,
+                        row_background=False, policy=dpg.mvTable_SizingStretchSame, scrollY=True,
+                        clipper=True, height=190, resizable=False, delay_search=True,borders_innerH=True,
+                        borders_outerH=True,borders_innerV=False, borders_outerV=True) as tableSpam:
+                        dpg.add_table_column(label="Touche", width_fixed=True, init_width_or_weight=150)
+                        dpg.add_table_column(label="Nombre de spam")
+                        dpg.add_table_column(label="Longueur moyenne du spam")
+                        dpg.add_table_column(label="Plus longue séquence")
+                        dpg.add_table_column(label="Total appuis")
+
+                        for i in range(4):
+                            with dpg.table_row(parent=tableSpam):
+                                dpg.add_text(f"Touche{i+1}")
+                                dpg.add_text(f"Val{i + 1}")
+                                dpg.add_text(f"Val{i + 1}")
+                                dpg.add_text(f"Val{i + 1}")
+                                dpg.add_text(f"Val{i + 1}")
 
 
     def selectionne_session(self, sender, app_data, user_data) -> None:
@@ -799,8 +847,8 @@ class Statistiques(BebeWindow):
         self.data_session = {cle: valeur for cle, valeur in temp}
         self.data_session_list = []
         for a,b in self.data_session.items():
-            self.data_session_list.append(unix_to_date(a) + "\t" + b)
-            self.correspondance_session_affichage[(unix_to_date(a)) + "\t" + b] = a
+            self.data_session_list.append(unix_to_date(a,1) + "\t" + b)
+            self.correspondance_session_affichage[(unix_to_date(a,1)) + "\t" + b] = a
         self.data_session_list.reverse()
         return
 
@@ -873,9 +921,6 @@ class Clavier2DWindow(BebeWindow):
         for a,b in self.data_session.items():
             self.data_session_list.append(unix_to_date(a) + "\t" + b)
             self.correspondance_session_affichage[(unix_to_date()) + "\t" + b] = a
-
-        print(self.data_session_list)
-        print(self.correspondance_session_affichage)
         return
 
     def actualiser_donnees(self) -> None:
@@ -901,7 +946,7 @@ def unix_to_time(horaire: int = 0, retour: bool = True) -> Union[str, tuple[int,
 
     """
     heure = horaire // 3600
-    mini = (horaire % 60) // 60
+    mini = (horaire % 3600) // 60
     sec = horaire % 60
 
     if retour:
@@ -931,6 +976,6 @@ def unix_to_date(horaire: int = 0, type_retour: int = 0) -> Union[str, datetime]
     if type_retour == 0:
         return datetime.datetime.fromtimestamp(horaire).strftime("%d/%m/%Y %H:%M:%S")
     elif type_retour == 1:
-        return datetime.datetime.fromtimestamp(horaire).strftime("%d/%m/%Y %H:%M")
+        return datetime.datetime.fromtimestamp(horaire).strftime("%d/%m/%y %H:%M")
     else:
         return datetime.time

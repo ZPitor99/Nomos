@@ -22,3 +22,5 @@ def create_indicator() -> None:
     root.attributes("-disabled", True)  # Non interactif
 
     root.mainloop()
+
+create_indicator()

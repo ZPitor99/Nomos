@@ -25,7 +25,7 @@ class AnalyseEnregistrement:
         # Trier par fréquence décroissante
         patterns_trie = sorted(self.patterns.items(), key=lambda x: x[1], reverse=True)
 
-        print("Top 20 des patterns de touches les plus fréquents:")
+        print("Top 10 des patterns de touches les plus fréquents:")
         for pattern, count in patterns_trie[:10]:
             print(f"  {pattern}: {count} fois")
 
